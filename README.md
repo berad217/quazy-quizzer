@@ -25,6 +25,24 @@ npm run dev
 
 The app will open at `http://localhost:3000`
 
+### Testing
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode (for development)
+npm run test:watch
+
+# Open visual test UI
+npm run test:ui
+
+# Generate coverage report
+npm run test:coverage
+```
+
+**Test Coverage**: 32 tests across config, server, and UI components.
+
 ## Project Structure
 
 ```

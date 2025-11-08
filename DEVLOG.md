@@ -20,6 +20,8 @@ This log tracks the implementation of the Local Quiz Engine following the sprint
 - **Config Loading Strategy**: Server loads config from disk and serves via API; client fetches from API. This centralizes file I/O on the server side.
 - **Deep Merge Implementation**: Config loader merges loaded config with defaults recursively, preserving unknown keys (per spec: "ignore, do not crash")
 - **Validation Approach**: Non-blocking warnings for config issues rather than failing; always falls back to defaults
+- **Testing Framework**: Vitest for unit/integration tests (integrates seamlessly with Vite), @testing-library/react for component testing
+- **Server Architecture**: Refactored Express app creation into separate `createApp()` function (server/app.ts) to enable testing without starting the server
 
 **File Structure Created**
 ```
@@ -44,7 +46,23 @@ This log tracks the implementation of the Local Quiz Engine following the sprint
   package.json              # Dependencies and scripts
 ```
 
-**Testing**
+**Testing Infrastructure**
+Added comprehensive testing setup with Vitest:
+- **Framework**: Vitest (chosen for native Vite integration and speed)
+- **React Testing**: @testing-library/react + happy-dom for DOM simulation
+- **API Testing**: supertest for Express endpoint testing
+- **Test Coverage**: 32 tests across 3 test suites
+  - Config module unit tests (16 tests): Deep merge, theme selection, validation
+  - Server integration tests (8 tests): API endpoints, CORS, error handling
+  - React component tests (8 tests): Loading states, error states, theme application
+
+Test commands:
+- `npm test` - Run all tests once
+- `npm run test:watch` - Watch mode for development
+- `npm run test:ui` - Visual test UI
+- `npm run test:coverage` - Generate coverage report
+
+**Manual Testing**
 Run `npm run dev` to start both server (port 3001) and client (port 3000). The app should:
 1. Load config from `/config/app.config.json`
 2. Display app name and theme
