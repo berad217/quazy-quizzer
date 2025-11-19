@@ -16,8 +16,8 @@ You're about to hand off to a fresh AI session. Your job: **Capture the conversa
 
 ```bash
 # What docs are present?
-- [ ] .claude/onboarding.md (how to work with this human)
-- [ ] .claude/global-preferences.md (communication style)
+- [ ] documentation/Onboarding.md (how to work with this human)
+- [ ] documentation/global-preferences.md (communication style)
 - [ ] SPEC.md or similar (what to build)
 - [ ] DEVLOG.md (what was built and why)
 - [ ] Code (actual implementation)
@@ -48,10 +48,10 @@ Use this template, adapting sections based on what exists:
 
 ### Quick Start
 
-**If `.claude/onboarding.md` exists:**
+**If `documentation/Onboarding.md` exists:**
 ```
-New AI: Start by reading .claude/onboarding.md (how to work with this human)
-Then read .claude/global-preferences.md (communication style)
+New AI: Start by reading documentation/Onboarding.md (how to work with this human)
+Then read documentation/global-preferences.md (communication style)
 Then come back here.
 ```
 
@@ -161,7 +161,7 @@ Tell the user:
 2. Briefly summarize what's captured
 3. Confirm it captures what they needed
 
-Save as: `.claude/current-handover.md` or `HANDOVER.md`
+Save as: `documentation/current-handover.md` or `HANDOVER.md`
 
 ---
 
@@ -169,8 +169,8 @@ Save as: `.claude/current-handover.md` or `HANDOVER.md`
 
 ### Step 1: Read in Order
 
-1. `.claude/global-preferences.md` (if exists) - Communication style
-2. `.claude/onboarding.md` (if exists) - How to work with this human
+1. `documentation/global-preferences.md` (if exists) - Communication style
+2. `documentation/Onboarding.md` (if exists) - How to work with this human
 3. **Handover document** - Current state and conversation context
 4. `SPEC.md` (if exists) - What we're building
 5. `DEVLOG.md` (if exists) - What's been built
@@ -230,7 +230,7 @@ Once oriented, continue where the last session left off. The goal: user shouldn'
 # Handover - Quiz App
 
 ## Quick Start
-New AI: Read .claude/onboarding.md first, then come back here.
+New AI: Read documentation/Onboarding.md first, then come back here.
 
 ## Project Context
 Project: Quazy Quizzer (quiz app for kids)

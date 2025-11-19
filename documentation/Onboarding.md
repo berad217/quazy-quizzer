@@ -20,20 +20,20 @@ If it doesn't exist yet: You'll create it in Sprint 1 (see section below)
 
 Handover:
 
-Common locations: .claude/current-handover.md, handover.md, ./docs/handover.md
+Common locations: documentation/handover-guide.md, handover.md, ./docs/handover.md
 What it contains: Current conversation context, where we are NOW
 Note: User might have given you the handover directly in their message
 If none exists: That's OK, start from spec
 
 Global Preferences:
 
-Location: .claude/global-preferences.md
+Location: documentation/global-preferences.md
 What it contains: How this human communicates and works
 Read this first before continuing here
 
 
 About This Human
-See .claude/global-preferences.md for detailed communication style.
+See documentation/global-preferences.md for detailed communication style.
 Quick summary for this project:
 
 Direct feedback preferred - "That won't work because X" beats hedging
@@ -67,11 +67,12 @@ Write tests for: Business logic 90-100%, APIs 100%, UI components 70-80%
 Tests must pass before moving on
 User may run tests, but you should verify they work
 
-Tech stack (to be finalized in Sprint 1):
+Tech stack (finalized in Sprint 1):
 
-Runtime: Web app with local server (Node/Express or similar)
-Frontend: Framework-agnostic (vanilla JS/TS, React, or Vue - decide in Sprint 1)
+Runtime: Web app with local server (Node/Express)
+Frontend: React + TypeScript + Vite
 Data: File-based (JSON for quizzes, config, user profiles)
+Testing: Vitest + @testing-library/react
 Core principle: Clean module boundaries, no tight coupling
 
 Documentation:
