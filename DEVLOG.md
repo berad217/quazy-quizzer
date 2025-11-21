@@ -154,3 +154,96 @@ None - spec was clear about validation rules and question types.
 Sprint 3 will implement the session engine: session creation, question randomization, answer storage, and grading logic.
 
 ---
+
+## Sprint 3 - Session Engine
+
+**Summary**
+- Implemented complete session engine for quiz sessions
+- Built session creation with quiz combination, deduplication, randomization, and limiting
+- Implemented answer storage and update functionality
+- Created comprehensive grading logic for all 5 question types
+- Added text normalization for fill_in_blank and short_answer questions
+- Implemented session progress tracking and completion
+- Added 6 new API endpoints for session management
+- Created in-memory session store service
+- Wrote 55 new tests (134 total passing)
+
+**Decisions**
+- **Composite Keys**: Used `quizId::questionId` format for unique question identification across multiple quiz sets, as specified in spec section 6.2. This prevents ID collisions when combining questions from different quizzes.
+- **Deduplication Strategy**: When creating sessions from multiple quizzes, questions with the same composite key are deduplicated (first occurrence is kept). This handles cases where the same question appears in multiple quiz sets.
+- **Randomization**: Fisher-Yates shuffle algorithm for unbiased randomization. Applied after deduplication and before limiting to ensure limit gets random subset.
+- **Text Normalization**: Implemented normalization for text answers (fill_in_blank and short_answer):
+  - Lowercase conversion
+  - Whitespace trimming and collapsing
+  - Removal of common articles (a, an, the)
+  - Applied when `normalize: true` flag is set, or for short_answer comparison
+- **Short Answer Grading**: Chose normalized exact match approach. If question.correct is not provided, returns false (requires manual grading). This addresses the concern from Sprint 2. Can add fuzzy matching later if needed.
+- **Session Storage**: In-memory Map-based storage for sessions. Simple and fast for prototype. Ready to swap for database/file persistence when needed (good separation of concerns).
+- **Session State**: Sessions track:
+  - Questions with composite keys and original quiz context
+  - Answers with values and timestamps
+  - Grading results (isCorrect populated after grading)
+  - Completion timestamp (optional)
+- **API Design**: RESTful session endpoints:
+  - `POST /api/sessions` - create new session
+  - `GET /api/sessions/:id` - get session
+  - `GET /api/sessions/user/:userId` - list user's sessions
+  - `POST /api/sessions/:id/answer` - submit answer
+  - `POST /api/sessions/:id/grade` - grade session
+  - `POST /api/sessions/:id/complete` - mark complete
+  - `GET /api/sessions/:id/progress` - get progress
+
+**File Structure Created**
+```
+/src
+  /quiz-engine
+    session.ts                # Session types and logic
+    session.test.ts           # Session tests (36 tests)
+/server
+  sessionService.ts          # Session store service
+  app.ts                     # Updated with session endpoints
+  app.test.ts                # Updated with session API tests (32 tests)
+```
+
+**Testing**
+- Added 55 new tests across 2 test files
+- Total: 134 tests passing (up from 79)
+- Coverage:
+  - Session engine: creation, randomization, deduplication, limiting (10 tests)
+  - Answer updates and storage (3 tests)
+  - Grading for all 5 question types (8 tests)
+  - Text normalization (5 tests)
+  - Progress tracking and completion (3 tests)
+  - Multi-quiz sessions (7 tests)
+  - Session API endpoints (19 tests)
+- All tests passing
+
+**Manual Testing**
+Run `npm run dev` and test session workflow:
+1. Create session: `POST /api/sessions` with userId and selectedQuizIds
+2. Submit answers: `POST /api/sessions/:id/answer` with compositeKey and value
+3. Check progress: `GET /api/sessions/:id/progress`
+4. Grade session: `POST /api/sessions/:id/grade` to see results
+5. Complete session: `POST /api/sessions/:id/complete`
+6. List user sessions: `GET /api/sessions/user/:userId`
+
+**Questions**
+None - spec section 6.2 and 6.4 clearly defined session structure and grading requirements.
+
+**Concerns / Risks**
+- **Normalization Scope**: Current normalization removes articles (a, an, the) which works for English but may need localization support. Also, "the answer" vs "answer" are treated identically - this might be too aggressive for some use cases. Consider making normalization rules configurable.
+- **Short Answer Limitations**: Current exact-match-with-normalization approach is simple but won't catch near-matches or synonyms. For example, "automobile" vs "car" would be marked incorrect. Future enhancement: add Levenshtein distance threshold or keyword matching.
+- **Session Persistence**: In-memory storage means all sessions are lost on server restart. Fine for development, but Sprint 5 (User Profiles & Persistence) will need to persist sessions to disk or database.
+- **Session Cleanup**: No automatic cleanup of old/completed sessions. Memory will grow unbounded. Should add: TTL for completed sessions, user-initiated deletion, or periodic cleanup job. Not critical for single-user prototype.
+- **Grading Timing**: Currently grading is explicit (POST /api/sessions/:id/grade). Spec mentions "show correct answers toggle" which implies on-demand grading. Current design supports this, but UI will need to decide when to call grade endpoint.
+- **Answer Type Validation**: updateAnswer() accepts any AnswerValue but doesn't validate it matches the question type (e.g., ensuring boolean for true_false). Grading handles type mismatches by returning false, but earlier validation would give better error messages. Trade-off: simplicity vs. strictness.
+
+**Resolved from Sprint 2**
+- ✅ **Composite Keys**: Implemented `quizId::questionId` format as planned
+- ✅ **Text Normalization**: Implemented with lowercase, trim, article removal, space collapsing
+- ✅ **Short Answer Grading**: Using normalized exact match; manual grading needed when no correct answer provided
+
+**Next Sprint Preview**
+Sprint 4 will implement the basic UI: sidebar navigation, question view, answer input components, and session flow.
+
+---
