@@ -247,3 +247,110 @@ None - spec section 6.2 and 6.4 clearly defined session structure and grading re
 Sprint 4 will implement the basic UI: sidebar navigation, question view, answer input components, and session flow.
 
 ---
+
+## Sprint 4 - Basic UI
+
+**Summary**
+- Implemented complete quiz user interface
+- Created session start screen for quiz selection and configuration
+- Built sidebar with question list and status indicators
+- Implemented question renderer for all 5 question types
+- Created answer input components with type-specific UI
+- Added navigation controls (prev/next) and session management
+- Wired all UI components to session API endpoints
+- Updated App component tests to match new UI structure
+- All 134 tests passing (no new tests, existing tests updated)
+
+**Decisions**
+- **Component Structure**: Modular design with separate components for each UI concern:
+  - `SessionStart.tsx` - Quiz selection and session configuration
+  - `QuizSession.tsx` - Main session container and state management
+  - `Sidebar.tsx` - Question list with status indicators
+  - `QuestionView.tsx` - Current question display
+  - `AnswerInput.tsx` - Type-specific answer inputs
+  - `Navigation.tsx` - Prev/Next buttons and session controls
+- **State Management**: React useState for local component state, no external state library needed. Session data fetched from API and cached in QuizSession component.
+- **Styling Approach**: Inline styles using theme from config. No CSS files or CSS-in-JS library. Keeps styling simple and tied directly to theme configuration. Easy to see all styles in component code.
+- **Status Indicators**: Three states for questions in sidebar:
+  - Unanswered: ○ (empty circle, gray)
+  - Answered: ● (filled circle, accent color)
+  - Graded Correct: ✓ (checkmark, green)
+  - Graded Incorrect: ✗ (x mark, red)
+- **Question Jump**: Respects `allowQuestionJump` config flag. When true, clicking sidebar items navigates to that question. When false, must use prev/next buttons.
+- **Grading Flow**: "Grade Quiz" button appears when all questions answered. After grading, correct answers and explanations are shown. "Complete Quiz" button appears after grading.
+- **Answer Input UX**:
+  - Multiple choice: Radio buttons (single) or checkboxes (multi)
+  - True/False: Large button-style radio options
+  - Fill-in-blank: Single-line textarea
+  - Short answer: Multi-line textarea
+  - All inputs styled consistently with theme
+  - Hover effects for better interactivity
+- **Responsive Design**: Sidebar has fixed width from theme config (260px default). Main content area is flexible. No mobile optimization yet (deferred to Sprint 6).
+
+**File Structure Created**
+```
+/src
+  /ui
+    SessionStart.tsx        # Quiz selection screen
+    QuizSession.tsx         # Main session container
+    Sidebar.tsx             # Question list sidebar
+    QuestionView.tsx        # Question display
+    AnswerInput.tsx         # Type-specific inputs
+    Navigation.tsx          # Navigation controls
+  App.tsx                   # Updated to use new UI
+  App.test.tsx              # Updated tests
+```
+
+**Testing**
+- Updated existing 8 App tests to work with new UI
+- Total: 134 tests passing (same as Sprint 3)
+- Manual testing workflow:
+  1. Start app with `npm run dev`
+  2. Select quizzes and configure options
+  3. Start session and answer questions
+  4. Navigate with prev/next or click sidebar (if allowed)
+  5. Grade quiz to see results
+  6. Complete quiz
+
+**Manual Testing Notes**
+Run `npm run dev` and test complete workflow:
+1. **Session Start**:
+   - See list of available quizzes
+   - Select one or more quizzes
+   - Configure user ID, randomize, and limit options
+   - Start quiz button enabled only when quiz selected
+2. **Quiz Session**:
+   - Sidebar shows all questions with status
+   - Current question highlighted in sidebar
+   - Question text displays with metadata (type, difficulty, category)
+   - Answer input appropriate for question type
+   - Prev/Next buttons work correctly (disabled at boundaries)
+   - Answers save automatically when changed
+   - Progress counter updates in sidebar
+3. **Grading**:
+   - "Grade Quiz" button enabled when all answered
+   - After grading, results show per-question (✓/✗)
+   - Correct answers displayed
+   - Explanations shown (if available)
+   - Score displayed in header
+4. **Completion**:
+   - "Complete Quiz" button enabled after grading
+   - Quiz marked as completed
+   - Can still navigate to review answers
+
+**Questions**
+None - spec section 6.3 clearly defined sidebar and navigation requirements.
+
+**Concerns / Risks**
+- **No Mobile Support**: Current design assumes desktop/laptop screen size. Sidebar is fixed-width and always visible. On mobile, sidebar would need to be collapsible or bottom-nav style. Deferred to Sprint 6 polish.
+- **No Keyboard Navigation**: Arrow keys, Enter to submit, etc. would improve accessibility. Not critical for MVP but should add in Sprint 6.
+- **No Answer Validation**: UI doesn't prevent submitting empty/invalid answers (grading handles it). Could add client-side validation for better UX.
+- **No Loading States**: When submitting answers or grading, no visual feedback that request is in progress. Could add spinners/disabled states.
+- **No Offline Support**: All API calls fail if server is down. No queuing or retry logic. Acceptable for local app on same machine.
+- **Inline Styles Scalability**: Using inline styles keeps Sprint 4 simple, but might become unwieldy with more complex UI. If we add many components in Sprint 6, consider migrating to CSS modules or styled-components.
+- **Theme Customization**: Users can edit config file to change colors, but changes require server restart. Hot-reloading themes would be nice dev experience improvement.
+
+**Next Sprint Preview**
+Sprint 5 will implement user profiles and persistence: user selection/creation, session history, progress tracking, and data persistence to disk.
+
+---

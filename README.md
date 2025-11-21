@@ -6,7 +6,7 @@ A modular, file-driven quiz system for local use. Built for kids to practice wit
 
 Currently implementing according to sprint-based workflow. See [DEVLOG.md](./DEVLOG.md) for progress.
 
-**Current Sprint**: Sprint 3 - Session Engine ✓
+**Current Sprint**: Sprint 4 - Basic UI ✓
 
 ## Quick Start
 
@@ -64,7 +64,7 @@ This project follows a structured sprint-based development process:
 1. **Sprint 1**: Skeleton & Config ✓
 2. **Sprint 2**: Quiz Schema & Loader ✓
 3. **Sprint 3**: Session Engine ✓
-4. **Sprint 4**: Basic UI
+4. **Sprint 4**: Basic UI ✓
 5. **Sprint 5**: User Profiles & Persistence
 6. **Sprint 6**: Polish & Extensibility
 

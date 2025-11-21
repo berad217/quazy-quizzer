@@ -24,20 +24,21 @@ describe('App Component', () => {
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
-  it('should load and display config', async () => {
+  it('should load and display session start screen', async () => {
+    // Mock config fetch
     mockFetch.mockResolvedValueOnce({
       json: async () => DEFAULT_CONFIG,
+    });
+    // Mock quizzes fetch
+    mockFetch.mockResolvedValueOnce({
+      json: async () => [],
     });
 
     render(<App />);
 
     await waitFor(() => {
-      expect(screen.getByText(DEFAULT_CONFIG.appName)).toBeInTheDocument();
+      expect(screen.getByText('Start a Quiz')).toBeInTheDocument();
     });
-
-    expect(
-      screen.getByText('Sprint 1 - Skeleton & Config ✓')
-    ).toBeInTheDocument();
   });
 
   it('should display error when fetch fails', async () => {
@@ -52,30 +53,27 @@ describe('App Component', () => {
     expect(screen.getByText('Network error')).toBeInTheDocument();
   });
 
-  it('should display configuration details', async () => {
+  it('should display select quizzes section', async () => {
     mockFetch.mockResolvedValueOnce({
       json: async () => DEFAULT_CONFIG,
+    });
+    mockFetch.mockResolvedValueOnce({
+      json: async () => [],
     });
 
     render(<App />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText('Configuration Loaded Successfully')
-      ).toBeInTheDocument();
+      expect(screen.getByText('Select Quizzes')).toBeInTheDocument();
     });
-
-    expect(
-      screen.getByText(/Theme: dark/i, { exact: false })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Quiz Folder: \.\/quizzes/i, { exact: false })
-    ).toBeInTheDocument();
   });
 
   it('should apply theme styles', async () => {
     mockFetch.mockResolvedValueOnce({
       json: async () => DEFAULT_CONFIG,
+    });
+    mockFetch.mockResolvedValueOnce({
+      json: async () => [],
     });
 
     const { container } = render(<App />);
@@ -93,30 +91,33 @@ describe('App Component', () => {
     mockFetch.mockResolvedValueOnce({
       json: async () => DEFAULT_CONFIG,
     });
+    mockFetch.mockResolvedValueOnce({
+      json: async () => [],
+    });
 
     render(<App />);
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/config');
-      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalled();
+      expect(mockFetch.mock.calls[0][0]).toBe('/api/config');
     });
   });
 
-  it('should display enabled features', async () => {
+  it('should display options section', async () => {
     mockFetch.mockResolvedValueOnce({
       json: async () => DEFAULT_CONFIG,
+    });
+    mockFetch.mockResolvedValueOnce({
+      json: async () => [],
     });
 
     render(<App />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Features Enabled:/)).toBeInTheDocument();
+      expect(screen.getByText('Options')).toBeInTheDocument();
     });
 
-    // Check that some features are listed
-    const featuresText = screen.getByText(/Features Enabled:/).textContent;
-    expect(featuresText).toContain('allowQuestionJump');
-    expect(featuresText).toContain('allowReviewMode');
+    expect(screen.getByText('Randomize question order')).toBeInTheDocument();
   });
 
   it('should use light theme when configured', async () => {
@@ -127,6 +128,9 @@ describe('App Component', () => {
 
     mockFetch.mockResolvedValueOnce({
       json: async () => lightConfig,
+    });
+    mockFetch.mockResolvedValueOnce({
+      json: async () => [],
     });
 
     const { container } = render(<App />);
