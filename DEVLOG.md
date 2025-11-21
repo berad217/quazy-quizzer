@@ -80,3 +80,77 @@ Run `npm run dev` to start both server (port 3001) and client (port 3000). The a
 Sprint 2 will implement quiz file schema, loader, and registry system.
 
 ---
+
+## Sprint 2 - Quiz Schema & Loader
+
+**Summary**
+- Defined TypeScript types for all quiz question types and quiz sets
+- Implemented comprehensive quiz validation logic
+- Created quiz discovery and loading service
+- Built quiz registry system with byId and tag-based lookups
+- Added quiz API endpoints to Express server
+- Created sample quiz files demonstrating all question types
+- Wrote 47 new tests (79 total passing)
+
+**Decisions**
+- **Module Organization**: Placed quiz schema and validators in `/src/quiz-engine/` (shared types) and quiz loading service in `/server/` (filesystem access). This follows clean separation between business logic and I/O operations.
+- **Validation Strategy**: Non-blocking validation that logs warnings and skips invalid questions/quizzes rather than crashing. Invalid quiz files are logged but don't prevent other quizzes from loading.
+- **Question Type Support**: Implemented all 5 question types from spec:
+  - `multiple_choice_single`: single correct answer from choices
+  - `multiple_choice_multi`: multiple correct answers from choices
+  - `true_false`: boolean answer
+  - `fill_in_blank`: text answer with acceptable variations and normalization
+  - `short_answer`: free text with optional reference answer
+- **Registry Structure**: Two-way lookup (byId object and all array) for O(1) ID lookup and easy iteration. Added helper function for tag-based filtering.
+- **API Design**: RESTful endpoints:
+  - `GET /api/quizzes` - list all quizzes
+  - `GET /api/quizzes/:id` - get specific quiz
+- **Error Handling**: Graceful handling of missing quiz folder (creates it), invalid JSON, schema violations, and duplicate IDs.
+
+**File Structure Created**
+```
+/src
+  /quiz-engine
+    schema.ts                  # TypeScript types and interfaces
+    validator.ts               # Quiz validation logic
+    validator.test.ts          # Validator tests (22 tests)
+/server
+  quizService.ts              # Quiz loading and registry
+  quizService.test.ts         # Quiz service tests (20 tests)
+  app.ts                      # Updated with quiz endpoints
+  app.test.ts                 # Updated with quiz endpoint tests (13 tests)
+/quizzes
+  sample_basics.v1.json       # Sample quiz with all question types
+  programming_basics.v1.json  # Sample programming quiz
+```
+
+**Testing**
+- Added 47 new tests across 3 test files
+- Total: 79 tests passing (up from 32)
+- Coverage:
+  - Validator: comprehensive tests for all question types and edge cases
+  - Quiz Service: file loading, registry building, error handling
+  - API endpoints: quiz listing and retrieval
+- All tests passing on first run
+
+**Manual Testing**
+Run `npm run dev` and verify:
+1. Server logs show quizzes being loaded on startup
+2. `GET /api/quizzes` returns array of loaded quizzes
+3. `GET /api/quizzes/sample_basics_v1` returns specific quiz data
+4. Invalid quiz files are logged but don't crash the server
+
+**Questions**
+None - spec was clear about validation rules and question types.
+
+**Concerns / Risks**
+- **Duplicate Question IDs Across Quizzes**: Current validation only checks for duplicate question IDs within a single quiz file. When we build sessions that combine questions from multiple quizzes (Sprint 3), we'll need composite keys like `quizId::questionId` to avoid collisions. This is noted in the spec (section 6.2) and we'll handle it in the session engine.
+- **Text Answer Normalization**: The `fill_in_blank` type supports normalization hints (`{ value: "answer", normalize: true }`), but we haven't implemented the actual normalization logic yet. This will be needed in Sprint 3 when we implement grading. Decision needed: what normalizations to support (lowercase, trim, remove articles, etc.)?
+- **Short Answer Grading**: The `short_answer` type has an optional `correct` field, but the spec notes it "can be manually or fuzzily graded." We'll need to clarify grading strategy in Sprint 3. Options: exact match, fuzzy match (Levenshtein distance?), or manual grading only?
+- **Quiz File Watching**: Currently quizzes are loaded once on server startup. For development, a file watcher or reload endpoint would be useful. Not critical for MVP but noted for Sprint 6 polish phase.
+- **Large Quiz Sets**: Current implementation loads all quiz data into memory. This is fine for personal use (dozens of quizzes), but won't scale to thousands. If needed later, could implement lazy loading or pagination.
+
+**Next Sprint Preview**
+Sprint 3 will implement the session engine: session creation, question randomization, answer storage, and grading logic.
+
+---

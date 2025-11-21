@@ -1,0 +1,54 @@
+{
+  "id": "programming_basics_v1",
+  "title": "Programming Basics",
+  "description": "Basic programming concepts and terminology",
+  "tags": ["programming", "computer-science", "basics"],
+  "version": 1,
+  "author": "local",
+  "allowRandomSubset": false,
+  "questions": [
+    {
+      "id": "prog1",
+      "type": "multiple_choice_single",
+      "text": "What does HTML stand for?",
+      "choices": [
+        "Hyper Text Markup Language",
+        "High Tech Modern Language",
+        "Home Tool Markup Language",
+        "Hyperlinks and Text Markup Language"
+      ],
+      "correct": [0],
+      "explanation": "HTML stands for Hyper Text Markup Language.",
+      "meta": {
+        "difficulty": 1,
+        "category": "web"
+      }
+    },
+    {
+      "id": "prog2",
+      "type": "true_false",
+      "text": "Python is a compiled language.",
+      "correct": false,
+      "explanation": "Python is an interpreted language, not a compiled language.",
+      "meta": {
+        "difficulty": 2,
+        "category": "python"
+      }
+    },
+    {
+      "id": "prog3",
+      "type": "fill_in_blank",
+      "text": "In object-oriented programming, a blueprint for creating objects is called a ________.",
+      "acceptableAnswers": [
+        "class",
+        "Class",
+        { "value": "a class", "normalize": true }
+      ],
+      "explanation": "A class is a template or blueprint for creating objects.",
+      "meta": {
+        "difficulty": 2,
+        "category": "oop"
+      }
+    }
+  ]
+}

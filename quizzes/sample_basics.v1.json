@@ -1,0 +1,73 @@
+{
+  "id": "sample_basics_v1",
+  "title": "Sample Quiz - Basics",
+  "description": "A sample quiz demonstrating all question types",
+  "tags": ["sample", "demo", "basics"],
+  "version": 1,
+  "author": "local",
+  "allowRandomSubset": true,
+  "defaultQuestionCount": 5,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple_choice_single",
+      "text": "What is the capital of France?",
+      "choices": ["London", "Berlin", "Paris", "Madrid"],
+      "correct": [2],
+      "explanation": "Paris is the capital and largest city of France.",
+      "meta": {
+        "difficulty": 1,
+        "category": "geography"
+      }
+    },
+    {
+      "id": "q2",
+      "type": "multiple_choice_multi",
+      "text": "Which of the following are primary colors?",
+      "choices": ["Red", "Green", "Blue", "Yellow", "Purple"],
+      "correct": [0, 2, 3],
+      "explanation": "Red, blue, and yellow are the primary colors.",
+      "meta": {
+        "difficulty": 2,
+        "category": "art"
+      }
+    },
+    {
+      "id": "q3",
+      "type": "true_false",
+      "text": "The Earth is flat.",
+      "correct": false,
+      "explanation": "The Earth is approximately spherical.",
+      "meta": {
+        "difficulty": 1,
+        "category": "science"
+      }
+    },
+    {
+      "id": "q4",
+      "type": "fill_in_blank",
+      "text": "The largest planet in our solar system is ________.",
+      "acceptableAnswers": [
+        "Jupiter",
+        "jupiter",
+        { "value": "the planet Jupiter", "normalize": true }
+      ],
+      "explanation": "Jupiter is the largest planet in our solar system.",
+      "meta": {
+        "difficulty": 2,
+        "category": "science"
+      }
+    },
+    {
+      "id": "q5",
+      "type": "short_answer",
+      "text": "Explain why the sky appears blue during the day.",
+      "correct": "The sky appears blue due to Rayleigh scattering of sunlight by the atmosphere.",
+      "explanation": "Blue light is scattered more than other colors because it travels in shorter, smaller waves.",
+      "meta": {
+        "difficulty": 3,
+        "category": "science"
+      }
+    }
+  ]
+}
