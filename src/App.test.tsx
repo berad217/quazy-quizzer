@@ -29,7 +29,10 @@ describe('App Component', () => {
     mockFetch.mockResolvedValueOnce({
       json: async () => DEFAULT_CONFIG,
     });
-    // Mock quizzes fetch
+    // Mock quizzes and users fetch
+    mockFetch.mockResolvedValueOnce({
+      json: async () => [],
+    });
     mockFetch.mockResolvedValueOnce({
       json: async () => [],
     });
@@ -53,9 +56,30 @@ describe('App Component', () => {
     expect(screen.getByText('Network error')).toBeInTheDocument();
   });
 
+  it('should display select user section', async () => {
+    mockFetch.mockResolvedValueOnce({
+      json: async () => DEFAULT_CONFIG,
+    });
+    mockFetch.mockResolvedValueOnce({
+      json: async () => [],
+    });
+    mockFetch.mockResolvedValueOnce({
+      json: async () => [],
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Select User')).toBeInTheDocument();
+    });
+  });
+
   it('should display select quizzes section', async () => {
     mockFetch.mockResolvedValueOnce({
       json: async () => DEFAULT_CONFIG,
+    });
+    mockFetch.mockResolvedValueOnce({
+      json: async () => [],
     });
     mockFetch.mockResolvedValueOnce({
       json: async () => [],
@@ -71,6 +95,9 @@ describe('App Component', () => {
   it('should apply theme styles', async () => {
     mockFetch.mockResolvedValueOnce({
       json: async () => DEFAULT_CONFIG,
+    });
+    mockFetch.mockResolvedValueOnce({
+      json: async () => [],
     });
     mockFetch.mockResolvedValueOnce({
       json: async () => [],
@@ -94,6 +121,9 @@ describe('App Component', () => {
     mockFetch.mockResolvedValueOnce({
       json: async () => [],
     });
+    mockFetch.mockResolvedValueOnce({
+      json: async () => [],
+    });
 
     render(<App />);
 
@@ -106,6 +136,9 @@ describe('App Component', () => {
   it('should display options section', async () => {
     mockFetch.mockResolvedValueOnce({
       json: async () => DEFAULT_CONFIG,
+    });
+    mockFetch.mockResolvedValueOnce({
+      json: async () => [],
     });
     mockFetch.mockResolvedValueOnce({
       json: async () => [],
@@ -128,6 +161,9 @@ describe('App Component', () => {
 
     mockFetch.mockResolvedValueOnce({
       json: async () => lightConfig,
+    });
+    mockFetch.mockResolvedValueOnce({
+      json: async () => [],
     });
     mockFetch.mockResolvedValueOnce({
       json: async () => [],

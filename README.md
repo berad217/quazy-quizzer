@@ -6,7 +6,7 @@ A modular, file-driven quiz system for local use. Built for kids to practice wit
 
 Currently implementing according to sprint-based workflow. See [DEVLOG.md](./DEVLOG.md) for progress.
 
-**Current Sprint**: Sprint 4 - Basic UI ✓
+**Current Sprint**: Sprint 5 - User Profiles & Persistence ✓
 
 ## Quick Start
 

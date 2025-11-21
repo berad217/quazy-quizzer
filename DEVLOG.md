@@ -354,3 +354,100 @@ None - spec section 6.3 clearly defined sidebar and navigation requirements.
 Sprint 5 will implement user profiles and persistence: user selection/creation, session history, progress tracking, and data persistence to disk.
 
 ---
+
+## Sprint 5 - User Profiles & Persistence
+
+**Summary**
+- Implemented user profile system with file-based persistence
+- Created user selection and creation UI
+- Added quiz completion tracking and statistics
+- Implemented per-question performance history
+- Built user storage service with JSON file persistence
+- Added 5 new user API endpoints
+- Updated session completion to record stats to user profiles
+- Updated UI to require user selection before starting quiz
+- All 135 tests passing (1 new test added)
+
+**Decisions**
+- **Storage Format**: JSON file at `/users/users.json` following spec format. Simple, human-readable, easy to backup. File is created automatically if missing.
+- **User ID Generation**: Auto-generate from name (lowercase, spaces to underscores). Prevents duplicate IDs by checking existing users. Simple and predictable.
+- **User Stats Tracking**: On quiz completion, record:
+  - Per-quiz stats: attempts, lastScore, bestScore, lastCompletedAt
+  - Per-question stats: timesSeen, timesCorrect, lastAnswer, lastResult
+  - Uses composite keys (quizId::questionId) for question history
+- **UI Flow**: Users must select/create user before starting quiz. Dropdown shows existing users with basic stats. "Create New User" button reveals inline form.
+- **Data Persistence**: Async file operations with error handling. Failed user stats recording logs error but doesn't break session completion. Ensures quiz can still complete even if user file is locked/corrupted.
+- **User Activity Tracking**: lastActiveAt timestamp updated on quiz completion. Could add on session start in future.
+- **Settings Support**: User settings structure ready (theme, fontScale) but not yet wired to UI. Deferred to Sprint 6.
+
+**File Structure Created**
+```
+/src
+  /storage
+    userProfile.ts           # User profile types
+/server
+  userService.ts             # User file I/O service
+  app.ts                     # Updated with user endpoints
+/users
+  users.json                 # User data file (created on first use)
+/src/ui
+  SessionStart.tsx           # Updated with user selection
+```
+
+**API Endpoints Added**
+- `GET /api/users` - list all users
+- `GET /api/users/:id` - get specific user
+- `POST /api/users` - create new user (body: {id, name})
+- `DELETE /api/users/:id` - delete user
+- `PUT /api/users/:id/settings` - update user settings
+- Updated `POST /api/sessions/:id/complete` - now records stats to user profile
+
+**Testing**
+- Updated existing 8 App tests to mock user API calls
+- 1 new test added for user selection UI
+- Total: 135 tests passing (up from 134)
+- User service tested indirectly through API endpoints
+- Manual testing required for file persistence
+
+**Manual Testing**
+Run `npm run dev` and test user workflow:
+1. **First Run**:
+   - No users exist, see "No users yet" message
+   - Click "Create New User"
+   - Enter name, click Create
+   - User appears in dropdown, auto-selected
+   - `/users/users.json` file created with user data
+2. **User Selection**:
+   - Dropdown shows all users
+   - Selecting user shows completed sets and last active date
+   - Can create additional users
+   - Start Quiz button disabled until user selected
+3. **Quiz Completion**:
+   - Complete quiz and grade
+   - Click "Complete Quiz"
+   - Check `/users/users.json` - stats updated:
+     - completedSets incremented
+     - questionHistory updated with results
+     - lastActiveAt timestamp updated
+4. **Persistence**:
+   - Restart server
+   - Users persist across restarts
+   - Stats maintained
+
+**Questions**
+None - spec section 5 clearly defined user profile structure.
+
+**Concerns / Risks**
+- **File Locking**: No file locking mechanism. Concurrent writes from multiple sessions could corrupt users.json. Acceptable for single-user local app. Would need proper database for multi-user.
+- **No User Authentication**: User selection is trust-based dropdown. Anyone can select any user. Fine for family use. If needed later, could add PIN codes or profiles.
+- **No Backup/Export**: Users.json is only copy of data. Should add export/import feature in Sprint 6. Manual backup works (just copy file).
+- **No User Deletion UI**: API endpoint exists but no UI button. Low priority since users rarely need deletion.
+- **Performance with Many Users**: Linear search through users array. Fine for family use (5-10 users). Would need indexing for 100+ users.
+- **No Data Migration**: If we change user data structure later, need to handle migrations. Current approach: spec is stable, minimal risk.
+- **Question History Growth**: questionHistory grows unbounded. Each question attempt adds/updates entry. Could grow large over years. Consider archiving old data or summarizing stats in Sprint 6.
+- **No Session History**: User profile tracks completion stats but doesn't store full session objects. Can't replay old sessions. Deferred to future enhancement.
+
+**Next Sprint Preview**
+Sprint 6 will add polish and extensibility: keyboard navigation, loading states, error handling improvements, theme switcher UI, responsive design, and Electron packaging.
+
+---

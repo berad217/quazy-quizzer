@@ -3,6 +3,7 @@ import cors from 'cors';
 import type { AppConfig } from '../src/config/types.js';
 import type { QuizRegistry } from '../src/quiz-engine/schema.js';
 import { sessionStore } from './sessionService.js';
+import * as userService from './userService.js';
 
 /**
  * Creates and configures the Express application
@@ -159,12 +160,35 @@ export function createApp(config: AppConfig, quizRegistry: QuizRegistry) {
 
   /**
    * POST /api/sessions/:id/complete
-   * Marks a session as complete
+   * Marks a session as complete and records stats to user profile
    */
-  app.post('/api/sessions/:id/complete', (req, res) => {
+  app.post('/api/sessions/:id/complete', async (req, res) => {
     try {
-      sessionStore.complete(req.params.id);
+      // First, get the grading results
+      const gradingResult = sessionStore.grade(req.params.id);
       const session = sessionStore.get(req.params.id);
+
+      if (!session) {
+        return res.status(404).json({ error: 'Session not found' });
+      }
+
+      // Mark session as complete
+      sessionStore.complete(req.params.id);
+
+      // Record completion to user profile
+      try {
+        await userService.recordQuizCompletion(
+          session.userId,
+          session.quizIds,
+          gradingResult.totalCorrect,
+          gradingResult.totalQuestions,
+          gradingResult.perQuestion
+        );
+      } catch (userError) {
+        console.error('Failed to record quiz completion for user:', userError);
+        // Continue anyway - session is still completed
+      }
+
       res.json(session);
     } catch (error) {
       if (
@@ -187,6 +211,114 @@ export function createApp(config: AppConfig, quizRegistry: QuizRegistry) {
     try {
       const progress = sessionStore.getProgress(req.params.id);
       res.json(progress);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes('not found')
+      ) {
+        return res.status(404).json({ error: error.message });
+      }
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * GET /api/users
+   * Gets all user profiles
+   */
+  app.get('/api/users', async (req, res) => {
+    try {
+      const users = await userService.loadUsers();
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * GET /api/users/:id
+   * Gets a specific user profile
+   */
+  app.get('/api/users/:id', async (req, res) => {
+    try {
+      const user = await userService.getUser(req.params.id);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * POST /api/users
+   * Creates a new user profile
+   * Body: { id, name }
+   */
+  app.post('/api/users', async (req, res) => {
+    try {
+      const { id, name } = req.body;
+
+      if (!id || !name) {
+        return res.status(400).json({
+          error: 'id and name are required',
+        });
+      }
+
+      const user = await userService.createUser(id, name);
+      res.status(201).json(user);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes('already exists')
+      ) {
+        return res.status(409).json({ error: error.message });
+      }
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * DELETE /api/users/:id
+   * Deletes a user profile
+   */
+  app.delete('/api/users/:id', async (req, res) => {
+    try {
+      const deleted = await userService.deleteUser(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * PUT /api/users/:id/settings
+   * Updates user settings
+   * Body: { theme?, fontScale? }
+   */
+  app.put('/api/users/:id/settings', async (req, res) => {
+    try {
+      const { theme, fontScale } = req.body;
+      await userService.updateUserSettings(req.params.id, {
+        theme,
+        fontScale,
+      });
+      const user = await userService.getUser(req.params.id);
+      res.json(user);
     } catch (error) {
       if (
         error instanceof Error &&

@@ -7,6 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { QuizSet } from '../quiz-engine/schema';
 import { AppConfig } from '../config/types';
+import { UserProfile } from '../storage/userProfile';
 
 interface SessionStartProps {
   config: AppConfig;
@@ -15,8 +16,11 @@ interface SessionStartProps {
 
 export function SessionStart({ config, onSessionStart }: SessionStartProps) {
   const [quizzes, setQuizzes] = useState<QuizSet[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [selectedQuizIds, setSelectedQuizIds] = useState<string[]>([]);
-  const [userId, setUserId] = useState('user1'); // Default user for now
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [newUserName, setNewUserName] = useState('');
+  const [showCreateUser, setShowCreateUser] = useState(false);
   const [randomize, setRandomize] = useState(config.features.randomizeOrderByDefault);
   const [limit, setLimit] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(false);
@@ -25,11 +29,20 @@ export function SessionStart({ config, onSessionStart }: SessionStartProps) {
   const theme = config.themes[config.defaultTheme];
 
   useEffect(() => {
-    // Load available quizzes
-    fetch('/api/quizzes')
-      .then((res) => res.json())
-      .then((data) => setQuizzes(data))
-      .catch((err) => setError(`Failed to load quizzes: ${err.message}`));
+    // Load available quizzes and users
+    Promise.all([
+      fetch('/api/quizzes').then((res) => res.json()),
+      fetch('/api/users').then((res) => res.json()),
+    ])
+      .then(([quizzesData, usersData]) => {
+        setQuizzes(quizzesData);
+        setUsers(usersData);
+        // Auto-select first user if available
+        if (usersData.length > 0) {
+          setSelectedUserId(usersData[0].id);
+        }
+      })
+      .catch((err) => setError(`Failed to load data: ${err.message}`));
   }, []);
 
   const handleQuizToggle = (quizId: string) => {
@@ -40,7 +53,48 @@ export function SessionStart({ config, onSessionStart }: SessionStartProps) {
     );
   };
 
+  const handleCreateUser = async () => {
+    if (!newUserName.trim()) {
+      setError('Please enter a name');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Generate ID from name (lowercase, no spaces)
+      const userId = newUserName.toLowerCase().replace(/\s+/g, '_');
+
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: userId, name: newUserName }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create user');
+      }
+
+      const newUser = await response.json();
+      setUsers((prev) => [...prev, newUser]);
+      setSelectedUserId(newUser.id);
+      setNewUserName('');
+      setShowCreateUser(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleStartSession = async () => {
+    if (!selectedUserId) {
+      setError('Please select or create a user');
+      return;
+    }
+
     if (selectedQuizIds.length === 0) {
       setError('Please select at least one quiz');
       return;
@@ -54,7 +108,7 @@ export function SessionStart({ config, onSessionStart }: SessionStartProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId,
+          userId: selectedUserId,
           selectedQuizIds,
           randomize,
           limit: limit && limit > 0 ? limit : undefined,
@@ -83,6 +137,8 @@ export function SessionStart({ config, onSessionStart }: SessionStartProps) {
     );
   }
 
+  const selectedUser = users.find((u) => u.id === selectedUserId);
+
   return (
     <div
       style={{
@@ -108,6 +164,145 @@ export function SessionStart({ config, onSessionStart }: SessionStartProps) {
         </div>
       )}
 
+      {/* User Selection */}
+      <div
+        style={{
+          backgroundColor: theme.panel,
+          padding: '1.5rem',
+          borderRadius: '8px',
+          marginTop: '1rem',
+        }}
+      >
+        <h2>Select User</h2>
+
+        {users.length > 0 ? (
+          <div>
+            <select
+              value={selectedUserId}
+              onChange={(e) => setSelectedUserId(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                fontSize: '1rem',
+                borderRadius: '4px',
+                border: `1px solid ${theme.accent}44`,
+                backgroundColor: theme.background,
+                color: theme.text,
+                marginBottom: '1rem',
+              }}
+            >
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.name}
+                </option>
+              ))}
+            </select>
+
+            {selectedUser && (
+              <div
+                style={{
+                  fontSize: '0.9rem',
+                  opacity: 0.8,
+                  marginBottom: '1rem',
+                }}
+              >
+                <div>
+                  Completed sets:{' '}
+                  {Object.keys(selectedUser.completedSets).length}
+                </div>
+                <div>
+                  Last active:{' '}
+                  {new Date(selectedUser.lastActiveAt).toLocaleDateString()}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p>No users yet. Create one below.</p>
+        )}
+
+        {!showCreateUser ? (
+          <button
+            onClick={() => setShowCreateUser(true)}
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: 'transparent',
+              color: theme.accent,
+              border: `1px solid ${theme.accent}`,
+              borderRadius: '4px',
+              cursor: 'pointer',
+            }}
+          >
+            + Create New User
+          </button>
+        ) : (
+          <div
+            style={{
+              backgroundColor: theme.background,
+              padding: '1rem',
+              borderRadius: '4px',
+              marginTop: '1rem',
+            }}
+          >
+            <input
+              type="text"
+              value={newUserName}
+              onChange={(e) => setNewUserName(e.target.value)}
+              placeholder="Enter name"
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                fontSize: '1rem',
+                borderRadius: '4px',
+                border: `1px solid ${theme.accent}44`,
+                backgroundColor: theme.panel,
+                color: theme.text,
+                marginBottom: '0.75rem',
+              }}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleCreateUser();
+                }
+              }}
+            />
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                onClick={handleCreateUser}
+                disabled={loading}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: theme.accent,
+                  color: theme.background,
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.5 : 1,
+                }}
+              >
+                Create
+              </button>
+              <button
+                onClick={() => {
+                  setShowCreateUser(false);
+                  setNewUserName('');
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: 'transparent',
+                  color: theme.text,
+                  border: `1px solid ${theme.text}44`,
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Quiz Selection */}
       <div
         style={{
           backgroundColor: theme.panel,
@@ -168,26 +363,6 @@ export function SessionStart({ config, onSessionStart }: SessionStartProps) {
         <h2>Options</h2>
 
         <div style={{ marginBottom: '1rem' }}>
-          <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-            User ID:
-          </label>
-          <input
-            type="text"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            style={{
-              padding: '0.5rem',
-              fontSize: '1rem',
-              borderRadius: '4px',
-              border: `1px solid ${theme.accent}44`,
-              backgroundColor: theme.background,
-              color: theme.text,
-              width: '200px',
-            }}
-          />
-        </div>
-
-        <div style={{ marginBottom: '1rem' }}>
           <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
             <input
               type="checkbox"
@@ -226,7 +401,7 @@ export function SessionStart({ config, onSessionStart }: SessionStartProps) {
 
       <button
         onClick={handleStartSession}
-        disabled={loading || selectedQuizIds.length === 0}
+        disabled={loading || !selectedUserId || selectedQuizIds.length === 0}
         style={{
           marginTop: '1.5rem',
           padding: '1rem 2rem',
@@ -236,8 +411,8 @@ export function SessionStart({ config, onSessionStart }: SessionStartProps) {
           color: theme.background,
           border: 'none',
           borderRadius: '6px',
-          cursor: loading || selectedQuizIds.length === 0 ? 'not-allowed' : 'pointer',
-          opacity: loading || selectedQuizIds.length === 0 ? 0.5 : 1,
+          cursor: loading || !selectedUserId || selectedQuizIds.length === 0 ? 'not-allowed' : 'pointer',
+          opacity: loading || !selectedUserId || selectedQuizIds.length === 0 ? 0.5 : 1,
         }}
       >
         {loading ? 'Starting...' : 'Start Quiz'}
