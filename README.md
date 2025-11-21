@@ -6,7 +6,7 @@ A modular, file-driven quiz system for local use. Built for kids to practice wit
 
 Currently implementing according to sprint-based workflow. See [DEVLOG.md](./DEVLOG.md) for progress.
 
-**Current Sprint**: Sprint 1 - Skeleton & Config ✓
+**Current Sprint**: Sprint 2 - Quiz Schema & Loader ✓
 
 ## Quick Start
 
@@ -41,7 +41,7 @@ npm run test:ui
 npm run test:coverage
 ```
 
-**Test Coverage**: 32 tests across config, server, and UI components.
+**Test Coverage**: 79 tests across config, schema validation, quiz loading, server API, and UI components.
 
 ## Project Structure
 
@@ -52,7 +52,7 @@ npm run test:coverage
 /server           - Express backend
 /src              - React frontend source
   /config         - Config types and loader
-  /quiz-engine    - Quiz logic (Sprint 2+)
+  /quiz-engine    - Quiz schema, validation, and engine logic
   /ui             - UI components (Sprint 4+)
   /storage        - Data persistence (Sprint 5+)
 ```
@@ -62,7 +62,7 @@ npm run test:coverage
 This project follows a structured sprint-based development process:
 
 1. **Sprint 1**: Skeleton & Config ✓
-2. **Sprint 2**: Quiz Schema & Loader
+2. **Sprint 2**: Quiz Schema & Loader ✓
 3. **Sprint 3**: Session Engine
 4. **Sprint 4**: Basic UI
 5. **Sprint 5**: User Profiles & Persistence
