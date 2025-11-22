@@ -20,6 +20,16 @@ import {
   FillInBlankQuestion,
   ShortAnswerQuestion,
 } from './schema';
+import { GradingConfig } from '../config/types';
+
+// Default grading config for tests
+const testGradingConfig: GradingConfig = {
+  enableFuzzyMatching: true,
+  fuzzyMatchThreshold: 0.8,
+  enablePartialCredit: false,
+  partialCreditThreshold: 0.6,
+  partialCreditValue: 0.5,
+};
 
 describe('Session Engine', () => {
   let registry: QuizRegistry;
@@ -287,7 +297,7 @@ describe('Session Engine', () => {
       const compositeKey = 'test_quiz_1::q1';
       updateAnswer(session, compositeKey, 1); // Correct answer
 
-      const result = gradeSession(session);
+      const result = gradeSession(session, testGradingConfig);
 
       expect(result.perQuestion[compositeKey].isCorrect).toBe(true);
       expect(session.answers[compositeKey].isCorrect).toBe(true);
@@ -297,7 +307,7 @@ describe('Session Engine', () => {
       const compositeKey = 'test_quiz_1::q1';
       updateAnswer(session, compositeKey, 0); // Wrong answer
 
-      const result = gradeSession(session);
+      const result = gradeSession(session, testGradingConfig);
 
       expect(result.perQuestion[compositeKey].isCorrect).toBe(false);
       expect(session.answers[compositeKey].isCorrect).toBe(false);
@@ -307,7 +317,7 @@ describe('Session Engine', () => {
       const compositeKey = 'test_quiz_1::q2';
       updateAnswer(session, compositeKey, true); // Correct
 
-      const result = gradeSession(session);
+      const result = gradeSession(session, testGradingConfig);
 
       expect(result.perQuestion[compositeKey].isCorrect).toBe(true);
     });
@@ -316,7 +326,7 @@ describe('Session Engine', () => {
       const compositeKey = 'test_quiz_1::q2';
       updateAnswer(session, compositeKey, false); // Wrong
 
-      const result = gradeSession(session);
+      const result = gradeSession(session, testGradingConfig);
 
       expect(result.perQuestion[compositeKey].isCorrect).toBe(false);
     });
@@ -325,7 +335,7 @@ describe('Session Engine', () => {
       const compositeKey = 'test_quiz_1::q3';
       updateAnswer(session, compositeKey, 'Paris'); // Exact match
 
-      const result = gradeSession(session);
+      const result = gradeSession(session, testGradingConfig);
 
       expect(result.perQuestion[compositeKey].isCorrect).toBe(true);
     });
@@ -334,7 +344,7 @@ describe('Session Engine', () => {
       const compositeKey = 'test_quiz_1::q3';
       updateAnswer(session, compositeKey, 'paris'); // Lowercase
 
-      const result = gradeSession(session);
+      const result = gradeSession(session, testGradingConfig);
 
       expect(result.perQuestion[compositeKey].isCorrect).toBe(true);
     });
@@ -343,7 +353,7 @@ describe('Session Engine', () => {
       const compositeKey = 'test_quiz_2::q4';
       updateAnswer(session, compositeKey, [0, 1, 3]); // Correct indices
 
-      const result = gradeSession(session);
+      const result = gradeSession(session, testGradingConfig);
 
       expect(result.perQuestion[compositeKey].isCorrect).toBe(true);
     });
@@ -352,7 +362,7 @@ describe('Session Engine', () => {
       const compositeKey = 'test_quiz_2::q4';
       updateAnswer(session, compositeKey, [3, 0, 1]); // Different order, same values
 
-      const result = gradeSession(session);
+      const result = gradeSession(session, testGradingConfig);
 
       expect(result.perQuestion[compositeKey].isCorrect).toBe(true);
     });
@@ -361,7 +371,7 @@ describe('Session Engine', () => {
       const compositeKey = 'test_quiz_2::q4';
       updateAnswer(session, compositeKey, [0, 1]); // Missing index 3
 
-      const result = gradeSession(session);
+      const result = gradeSession(session, testGradingConfig);
 
       expect(result.perQuestion[compositeKey].isCorrect).toBe(false);
     });
@@ -370,7 +380,7 @@ describe('Session Engine', () => {
       const compositeKey = 'test_quiz_2::q4';
       updateAnswer(session, compositeKey, [0, 1, 2, 3]); // Extra index 2
 
-      const result = gradeSession(session);
+      const result = gradeSession(session, testGradingConfig);
 
       expect(result.perQuestion[compositeKey].isCorrect).toBe(false);
     });
@@ -384,7 +394,7 @@ describe('Session Engine', () => {
         '  Process  where  the  plants  make  food  using  sunlight  '
       );
 
-      const result = gradeSession(session);
+      const result = gradeSession(session, testGradingConfig);
 
       expect(result.perQuestion[compositeKey].isCorrect).toBe(true);
     });
@@ -397,7 +407,7 @@ describe('Session Engine', () => {
       updateAnswer(session, 'test_quiz_2::q4', [0, 1]); // Incorrect (missing 3)
       // q5 and test_quiz_2::q1 unanswered
 
-      const result = gradeSession(session);
+      const result = gradeSession(session, testGradingConfig);
 
       expect(result.totalQuestions).toBe(6);
       expect(result.totalCorrect).toBe(3);
@@ -407,7 +417,7 @@ describe('Session Engine', () => {
     });
 
     it('should handle all questions unanswered', () => {
-      const result = gradeSession(session);
+      const result = gradeSession(session, testGradingConfig);
 
       expect(result.totalQuestions).toBe(6);
       expect(result.totalCorrect).toBe(0);
@@ -428,7 +438,7 @@ describe('Session Engine', () => {
       );
       updateAnswer(session, 'test_quiz_2::q1', false);
 
-      const result = gradeSession(session);
+      const result = gradeSession(session, testGradingConfig);
 
       expect(result.totalQuestions).toBe(6);
       expect(result.totalCorrect).toBe(6);
@@ -473,35 +483,40 @@ describe('Session Engine', () => {
     it('should normalize by removing articles', () => {
       updateAnswer(session, 'normalize_test::q1', 'answer'); // "the" removed
 
-      const result = gradeSession(session);
+      const result = gradeSession(session, testGradingConfig);
       expect(result.perQuestion['normalize_test::q1'].isCorrect).toBe(true);
     });
 
     it('should normalize by trimming and lowercasing', () => {
       updateAnswer(session, 'normalize_test::q1', '  THE ANSWER  ');
 
-      const result = gradeSession(session);
+      const result = gradeSession(session, testGradingConfig);
       expect(result.perQuestion['normalize_test::q1'].isCorrect).toBe(true);
     });
 
     it('should normalize by collapsing spaces', () => {
       updateAnswer(session, 'normalize_test::q1', 'the    answer');
 
-      const result = gradeSession(session);
+      const result = gradeSession(session, testGradingConfig);
       expect(result.perQuestion['normalize_test::q1'].isCorrect).toBe(true);
     });
 
     it('should not normalize when normalize flag is false', () => {
       updateAnswer(session, 'normalize_test::q1', 'EXACT MATCH REQUIRED'); // Wrong case
 
-      const result = gradeSession(session);
+      // Disable fuzzy matching for this test to test exact match behavior
+      const exactMatchConfig: GradingConfig = {
+        ...testGradingConfig,
+        enableFuzzyMatching: false,
+      };
+      const result = gradeSession(session, exactMatchConfig);
       expect(result.perQuestion['normalize_test::q1'].isCorrect).toBe(false);
     });
 
     it('should match exact string when normalize flag is false', () => {
       updateAnswer(session, 'normalize_test::q1', 'exact match required');
 
-      const result = gradeSession(session);
+      const result = gradeSession(session, testGradingConfig);
       expect(result.perQuestion['normalize_test::q1'].isCorrect).toBe(true);
     });
   });

@@ -143,7 +143,7 @@ export function createApp(config: AppConfig, quizRegistry: QuizRegistry) {
    */
   app.post('/api/sessions/:id/grade', (req, res) => {
     try {
-      const result = sessionStore.grade(req.params.id);
+      const result = sessionStore.grade(req.params.id, config.grading);
       res.json(result);
     } catch (error) {
       if (
@@ -165,7 +165,7 @@ export function createApp(config: AppConfig, quizRegistry: QuizRegistry) {
   app.post('/api/sessions/:id/complete', async (req, res) => {
     try {
       // First, get the grading results
-      const gradingResult = sessionStore.grade(req.params.id);
+      const gradingResult = sessionStore.grade(req.params.id, config.grading);
       const session = sessionStore.get(req.params.id);
 
       if (!session) {

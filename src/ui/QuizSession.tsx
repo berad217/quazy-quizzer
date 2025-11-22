@@ -22,11 +22,16 @@ interface GradingResults {
   totalIncorrect: number;
   totalUnanswered: number;
   score: number;
+  totalScore: number;
   perQuestion: {
     [compositeKey: string]: {
       isCorrect: boolean;
       userAnswer: AnswerValue;
       correctAnswer?: any;
+      score?: number;
+      matchType?: 'exact' | 'fuzzy' | 'partial' | 'none';
+      similarity?: number;
+      feedback?: string;
     };
   };
 }
@@ -345,6 +350,10 @@ export function QuizSession({ sessionId, onExit }: QuizSessionProps) {
             showCorrect={gradingResults !== null && showCorrectAnswers}
             correctAnswer={currentQuestionResult?.correctAnswer}
             isCorrect={currentQuestionResult?.isCorrect}
+            score={currentQuestionResult?.score}
+            matchType={currentQuestionResult?.matchType}
+            similarity={currentQuestionResult?.similarity}
+            feedback={currentQuestionResult?.feedback}
             readOnly={reviewMode}
           />
         </div>

@@ -38,4 +38,11 @@ export const DEFAULT_CONFIG: AppConfig = {
     trackPerQuestionStats: true,
     showCorrectAnswersToggle: true,
   },
+  grading: {
+    enableFuzzyMatching: true,
+    fuzzyMatchThreshold: 0.8,
+    enablePartialCredit: false,
+    partialCreditThreshold: 0.6,
+    partialCreditValue: 0.5,
+  },
 };

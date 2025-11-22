@@ -7,6 +7,12 @@
 
 import { Question, QuizRegistry } from './schema';
 import { randomUUID } from 'crypto';
+import { GradingConfig } from '../config/types';
+import {
+  gradeTextAnswer,
+  AcceptableAnswer,
+  MatchResult,
+} from '../grading/fuzzyMatch';
 
 /**
  * SessionQuestion wraps a question with session context
@@ -37,6 +43,12 @@ export interface SessionAnswer {
   value: AnswerValue;
   isCorrect?: boolean; // undefined until graded
   answeredAt?: string; // ISO timestamp
+  // Sprint 7: Enhanced grading metadata
+  score?: number;                    // 0-1, supports partial credit
+  matchType?: 'exact' | 'fuzzy' | 'partial' | 'none';
+  similarity?: number;               // 0-1, for fuzzy matches
+  matchedAnswer?: string;            // which acceptable answer matched
+  feedback?: string;                 // custom feedback
 }
 
 /**
@@ -73,11 +85,16 @@ export interface GradingResult {
   totalIncorrect: number;
   totalUnanswered: number;
   score: number; // percentage 0-100
+  totalScore: number; // Sum of scores (0-totalQuestions, supports partial credit)
   perQuestion: {
     [compositeKey: string]: {
       isCorrect: boolean;
       userAnswer: AnswerValue;
       correctAnswer?: any;
+      score?: number; // 0-1, supports partial credit
+      matchType?: 'exact' | 'fuzzy' | 'partial' | 'none';
+      similarity?: number; // 0-1, for fuzzy matches
+      feedback?: string; // custom feedback
     };
   };
 }
@@ -188,16 +205,17 @@ export function updateAnswer(
 
 /**
  * Grades all answers in a session
- * Updates the session.answers[].isCorrect fields
+ * Updates the session.answers[] fields with grading metadata
  * Returns grading summary
  */
-export function gradeSession(session: Session): GradingResult {
+export function gradeSession(session: Session, gradingConfig: GradingConfig): GradingResult {
   const result: GradingResult = {
     totalQuestions: session.questions.length,
     totalCorrect: 0,
     totalIncorrect: 0,
     totalUnanswered: 0,
     score: 0,
+    totalScore: 0,
     perQuestion: {},
   };
 
@@ -210,115 +228,182 @@ export function gradeSession(session: Session): GradingResult {
       continue;
     }
 
-    const isCorrect = gradeAnswer(question, answer.value);
+    // Grade with enhanced grading (returns detailed match info)
+    const gradingDetails = gradeAnswer(question, answer.value, gradingConfig);
 
-    // Update the answer with grading result
-    answer.isCorrect = isCorrect;
+    // Update the answer with full grading metadata
+    answer.isCorrect = gradingDetails.isCorrect;
+    answer.score = gradingDetails.score;
+    answer.matchType = gradingDetails.matchType;
+    answer.similarity = gradingDetails.similarity;
+    answer.matchedAnswer = gradingDetails.matchedAnswer;
+    answer.feedback = gradingDetails.feedback;
 
-    // Track in result
-    if (isCorrect) {
+    // Track in result with weighted scores
+    result.totalScore += gradingDetails.score;
+    if (gradingDetails.score >= 1.0) {
       result.totalCorrect++;
+    } else if (gradingDetails.score > 0) {
+      // Partial credit counts as partial correct
+      result.totalCorrect += gradingDetails.score;
+      result.totalIncorrect += (1 - gradingDetails.score);
     } else {
       result.totalIncorrect++;
     }
 
     // Build per-question result
     result.perQuestion[compositeKey] = {
-      isCorrect,
+      isCorrect: gradingDetails.isCorrect,
       userAnswer: answer.value,
       correctAnswer: getCorrectAnswer(question),
+      score: gradingDetails.score,
+      matchType: gradingDetails.matchType,
+      similarity: gradingDetails.similarity,
+      feedback: gradingDetails.feedback,
     };
   }
 
-  // Calculate percentage score (only from answered questions)
-  const answeredCount =
-    result.totalQuestions - result.totalUnanswered;
+  // Calculate percentage score based on weighted scores
+  const answeredCount = result.totalQuestions - result.totalUnanswered;
   result.score =
-    answeredCount > 0 ? (result.totalCorrect / answeredCount) * 100 : 0;
+    answeredCount > 0 ? (result.totalScore / answeredCount) * 100 : 0;
 
   return result;
 }
 
 /**
- * Grades a single answer against a question
- * Returns true if correct, false otherwise
+ * Detailed grading result for a single answer
  */
-function gradeAnswer(question: Question, userAnswer: AnswerValue): boolean {
+interface DetailedGradingResult {
+  isCorrect: boolean;
+  score: number; // 0-1
+  matchType?: 'exact' | 'fuzzy' | 'partial' | 'none';
+  similarity?: number;
+  matchedAnswer?: string;
+  feedback?: string;
+}
+
+/**
+ * Grades a single answer against a question
+ * Returns detailed grading information including score and match type
+ */
+function gradeAnswer(
+  question: Question,
+  userAnswer: AnswerValue,
+  gradingConfig: GradingConfig
+): DetailedGradingResult {
   switch (question.type) {
     case 'multiple_choice_single': {
       // User answer should be a number (index)
-      if (typeof userAnswer !== 'number') return false;
+      if (typeof userAnswer !== 'number') {
+        return { isCorrect: false, score: 0, matchType: 'none' };
+      }
       // Correct answer is an array of indices, typically 1 item
-      return question.correct.includes(userAnswer);
+      const isCorrect = question.correct.includes(userAnswer);
+      return {
+        isCorrect,
+        score: isCorrect ? 1 : 0,
+        matchType: isCorrect ? 'exact' : 'none',
+      };
     }
 
     case 'multiple_choice_multi': {
       // User answer should be an array of numbers
-      if (!Array.isArray(userAnswer)) return false;
+      if (!Array.isArray(userAnswer)) {
+        return { isCorrect: false, score: 0, matchType: 'none' };
+      }
       // Must match exactly (same indices, order doesn't matter)
       const userSet = new Set(userAnswer);
       const correctSet = new Set(question.correct);
-      if (userSet.size !== correctSet.size) return false;
-      for (const idx of userSet) {
-        if (!correctSet.has(idx)) return false;
+      let isCorrect = true;
+      if (userSet.size !== correctSet.size) {
+        isCorrect = false;
+      } else {
+        for (const idx of userSet) {
+          if (!correctSet.has(idx)) {
+            isCorrect = false;
+            break;
+          }
+        }
       }
-      return true;
+      return {
+        isCorrect,
+        score: isCorrect ? 1 : 0,
+        matchType: isCorrect ? 'exact' : 'none',
+      };
     }
 
     case 'true_false': {
       // User answer should be a boolean
-      if (typeof userAnswer !== 'boolean') return false;
-      return userAnswer === question.correct;
+      if (typeof userAnswer !== 'boolean') {
+        return { isCorrect: false, score: 0, matchType: 'none' };
+      }
+      const isCorrect = userAnswer === question.correct;
+      return {
+        isCorrect,
+        score: isCorrect ? 1 : 0,
+        matchType: isCorrect ? 'exact' : 'none',
+      };
     }
 
     case 'fill_in_blank': {
       // User answer should be a string
-      if (typeof userAnswer !== 'string') return false;
-
-      // Check against acceptable answers
-      for (const acceptable of question.acceptableAnswers) {
-        if (typeof acceptable === 'string') {
-          // Exact match (case-sensitive)
-          if (userAnswer === acceptable) return true;
-        } else {
-          // Object with normalization hint
-          const expected = acceptable.value;
-          if (acceptable.normalize) {
-            // Apply normalization to both
-            if (normalizeText(userAnswer) === normalizeText(expected)) {
-              return true;
-            }
-          } else {
-            // Exact match
-            if (userAnswer === expected) return true;
-          }
-        }
+      if (typeof userAnswer !== 'string') {
+        return { isCorrect: false, score: 0, matchType: 'none' };
       }
 
-      return false;
+      // Use fuzzy matching for text answers
+      const matchResult = gradeTextAnswer(
+        userAnswer,
+        question.acceptableAnswers as AcceptableAnswer[],
+        gradingConfig
+      );
+
+      return {
+        isCorrect: matchResult.matched,
+        score: matchResult.score,
+        matchType: matchResult.matchType,
+        similarity: matchResult.similarity,
+        matchedAnswer: matchResult.matchedAnswer,
+        feedback: matchResult.feedback,
+      };
     }
 
     case 'short_answer': {
       // User answer should be a string
-      if (typeof userAnswer !== 'string') return false;
+      if (typeof userAnswer !== 'string') {
+        return { isCorrect: false, score: 0, matchType: 'none' };
+      }
 
       // If no correct answer provided, cannot auto-grade
       if (!question.correct) {
         // Return undefined to indicate manual grading needed
         // For now, treat as incorrect (needs manual review)
-        return false;
+        return { isCorrect: false, score: 0, matchType: 'none' };
       }
 
-      // Simple exact match (case-insensitive with trimming)
-      // This is a basic implementation - may want to add fuzzy matching later
-      return (
-        normalizeText(userAnswer) === normalizeText(question.correct)
+      // Use fuzzy matching for short answer
+      // Convert single correct answer to array format for gradeTextAnswer
+      const acceptableAnswers: AcceptableAnswer[] = [question.correct];
+      const matchResult = gradeTextAnswer(
+        userAnswer,
+        acceptableAnswers,
+        gradingConfig
       );
+
+      return {
+        isCorrect: matchResult.matched,
+        score: matchResult.score,
+        matchType: matchResult.matchType,
+        similarity: matchResult.similarity,
+        matchedAnswer: matchResult.matchedAnswer,
+        feedback: matchResult.feedback,
+      };
     }
 
     default:
       // Unknown question type
-      return false;
+      return { isCorrect: false, score: 0, matchType: 'none' };
   }
 }
 
