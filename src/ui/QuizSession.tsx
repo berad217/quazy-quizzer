@@ -6,14 +6,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { Session, AnswerValue } from '../quiz-engine/session';
-import { AppConfig } from '../config/types';
 import { Sidebar } from './Sidebar';
 import { QuestionView } from './QuestionView';
 import { Navigation } from './Navigation';
+import { useTheme } from './ThemeContext';
 
 interface QuizSessionProps {
   sessionId: string;
-  config: AppConfig;
   onExit: () => void;
 }
 
@@ -32,14 +31,15 @@ interface GradingResults {
   };
 }
 
-export function QuizSession({ sessionId, config, onExit }: QuizSessionProps) {
+export function QuizSession({ sessionId, onExit }: QuizSessionProps) {
+  const { theme, config } = useTheme();
   const [session, setSession] = useState<Session | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [gradingResults, setGradingResults] = useState<GradingResults | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const theme = config.themes[config.defaultTheme];
+  const [reviewMode, setReviewMode] = useState(false);
+  const [showCorrectAnswers, setShowCorrectAnswers] = useState(true); // Default ON per spec
 
   // Load session
   useEffect(() => {
@@ -157,7 +157,7 @@ export function QuizSession({ sessionId, config, onExit }: QuizSessionProps) {
           color: theme.text,
         }}
       >
-        <h2 style={{ color: 'red' }}>Error</h2>
+        <h2 style={{ color: '#ef4444' }}>Error</h2>
         <p>{error || 'Session not found'}</p>
         <button
           onClick={onExit}
@@ -199,7 +199,6 @@ export function QuizSession({ sessionId, config, onExit }: QuizSessionProps) {
         session={session}
         currentQuestionIndex={currentQuestionIndex}
         gradingResults={gradingResults?.perQuestion || null}
-        config={config}
         onQuestionSelect={handleQuestionSelect}
       />
 
@@ -221,39 +220,118 @@ export function QuizSession({ sessionId, config, onExit }: QuizSessionProps) {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '1rem',
           }}
         >
-          <h2 style={{ margin: 0, color: theme.accent }}>
-            {config.appName}
-          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <h2 style={{ margin: 0, color: theme.accent }}>
+              {config.appName}
+            </h2>
+            {reviewMode && (
+              <span
+                style={{
+                  padding: '0.25rem 0.75rem',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  borderRadius: '4px',
+                  fontSize: '0.85rem',
+                  fontWeight: 'bold',
+                }}
+              >
+                Review Mode
+              </span>
+            )}
+          </div>
 
-          {gradingResults && (
-            <div
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            {gradingResults && (
+              <div
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: theme.background,
+                  borderRadius: '6px',
+                  fontWeight: 'bold',
+                }}
+              >
+                Score: {gradingResults.totalCorrect} / {gradingResults.totalQuestions} (
+                {Math.round(gradingResults.score)}%)
+              </div>
+            )}
+
+            {/* Show Correct Answers Toggle */}
+            {gradingResults && config.features.showCorrectAnswersToggle && (
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  cursor: 'pointer',
+                  padding: '0.5rem',
+                  backgroundColor: theme.background,
+                  borderRadius: '4px',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={showCorrectAnswers}
+                  onChange={(e) => setShowCorrectAnswers(e.target.checked)}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '0.9rem' }}>Show Answers</span>
+              </label>
+            )}
+
+            {/* Review Mode Button */}
+            {session?.completedAt && config.features.allowReviewMode && !reviewMode && (
+              <button
+                onClick={() => setReviewMode(true)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                }}
+              >
+                Review Session
+              </button>
+            )}
+
+            {/* Exit Review Button */}
+            {reviewMode && (
+              <button
+                onClick={() => setReviewMode(false)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: theme.accent,
+                  color: theme.background,
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                }}
+              >
+                Exit Review
+              </button>
+            )}
+
+            <button
+              onClick={onExit}
               style={{
-                padding: '0.75rem 1.5rem',
-                backgroundColor: theme.background,
-                borderRadius: '6px',
-                fontWeight: 'bold',
+                padding: '0.5rem 1rem',
+                backgroundColor: 'transparent',
+                color: theme.text,
+                border: `1px solid ${theme.text}44`,
+                borderRadius: '4px',
+                cursor: 'pointer',
               }}
             >
-              Score: {gradingResults.totalCorrect} / {gradingResults.totalQuestions} (
-              {Math.round(gradingResults.score)}%)
-            </div>
-          )}
-
-          <button
-            onClick={onExit}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: 'transparent',
-              color: theme.text,
-              border: `1px solid ${theme.text}44`,
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            Exit Quiz
-          </button>
+              Exit Quiz
+            </button>
+          </div>
         </div>
 
         {/* Question content */}
@@ -263,27 +341,87 @@ export function QuizSession({ sessionId, config, onExit }: QuizSessionProps) {
             questionNumber={currentQuestionIndex + 1}
             totalQuestions={session.questions.length}
             currentAnswer={currentAnswer}
-            onAnswerChange={handleAnswerChange}
-            config={config}
-            showCorrect={gradingResults !== null}
+            onAnswerChange={reviewMode ? () => {} : handleAnswerChange}
+            showCorrect={gradingResults !== null && showCorrectAnswers}
             correctAnswer={currentQuestionResult?.correctAnswer}
             isCorrect={currentQuestionResult?.isCorrect}
+            readOnly={reviewMode}
           />
         </div>
 
-        {/* Navigation */}
-        <Navigation
-          currentIndex={currentQuestionIndex}
-          totalQuestions={session.questions.length}
-          onPrevious={handlePrevious}
-          onNext={handleNext}
-          onGrade={handleGrade}
-          onComplete={handleComplete}
-          config={config}
-          isGraded={gradingResults !== null}
-          isCompleted={session.completedAt !== undefined}
-          allAnswered={allAnswered}
-        />
+        {/* Navigation - hide in review mode */}
+        {!reviewMode && (
+          <Navigation
+            currentIndex={currentQuestionIndex}
+            totalQuestions={session.questions.length}
+            onPrevious={handlePrevious}
+            onNext={handleNext}
+            onGrade={handleGrade}
+            onComplete={handleComplete}
+            isGraded={gradingResults !== null}
+            isCompleted={session.completedAt !== undefined}
+            allAnswered={allAnswered}
+          />
+        )}
+
+        {/* Simple navigation in review mode */}
+        {reviewMode && (
+          <div
+            style={{
+              padding: '1.5rem 2rem',
+              backgroundColor: theme.panel,
+              borderTop: `2px solid ${theme.accent}44`,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <button
+              onClick={handlePrevious}
+              disabled={currentQuestionIndex === 0}
+              style={{
+                padding: '0.75rem 1.5rem',
+                fontSize: '1rem',
+                fontWeight: 'bold',
+                backgroundColor: currentQuestionIndex === 0 ? theme.text + '44' : theme.accent,
+                color: currentQuestionIndex === 0 ? theme.text + '88' : theme.background,
+                border: 'none',
+                borderRadius: '6px',
+                cursor: currentQuestionIndex === 0 ? 'not-allowed' : 'pointer',
+                opacity: currentQuestionIndex === 0 ? 0.5 : 1,
+              }}
+            >
+              ← Previous
+            </button>
+            <div style={{ fontWeight: 'bold' }}>
+              Question {currentQuestionIndex + 1} of {session.questions.length}
+            </div>
+            <button
+              onClick={handleNext}
+              disabled={currentQuestionIndex === session.questions.length - 1}
+              style={{
+                padding: '0.75rem 1.5rem',
+                fontSize: '1rem',
+                fontWeight: 'bold',
+                backgroundColor:
+                  currentQuestionIndex === session.questions.length - 1
+                    ? theme.text + '44'
+                    : theme.accent,
+                color:
+                  currentQuestionIndex === session.questions.length - 1
+                    ? theme.text + '88'
+                    : theme.background,
+                border: 'none',
+                borderRadius: '6px',
+                cursor:
+                  currentQuestionIndex === session.questions.length - 1 ? 'not-allowed' : 'pointer',
+                opacity: currentQuestionIndex === session.questions.length - 1 ? 0.5 : 1,
+              }}
+            >
+              Next →
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

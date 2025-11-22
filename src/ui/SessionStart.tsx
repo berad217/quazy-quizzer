@@ -6,15 +6,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { QuizSet } from '../quiz-engine/schema';
-import { AppConfig } from '../config/types';
 import { UserProfile } from '../storage/userProfile';
+import { useTheme } from './ThemeContext';
 
 interface SessionStartProps {
-  config: AppConfig;
-  onSessionStart: (sessionId: string) => void;
+  onSessionStart: (sessionId: string, userId: string) => void;
+  onUserChange: (userId: string) => void;
+  currentUserId: string | null;
 }
 
-export function SessionStart({ config, onSessionStart }: SessionStartProps) {
+export function SessionStart({ onSessionStart, onUserChange, currentUserId }: SessionStartProps) {
+  const { theme, themeName, setThemeName, config } = useTheme();
   const [quizzes, setQuizzes] = useState<QuizSet[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [selectedQuizIds, setSelectedQuizIds] = useState<string[]>([]);
@@ -26,8 +28,6 @@ export function SessionStart({ config, onSessionStart }: SessionStartProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const theme = config.themes[config.defaultTheme];
-
   useEffect(() => {
     // Load available quizzes and users
     Promise.all([
@@ -37,13 +37,24 @@ export function SessionStart({ config, onSessionStart }: SessionStartProps) {
       .then(([quizzesData, usersData]) => {
         setQuizzes(quizzesData);
         setUsers(usersData);
-        // Auto-select first user if available
-        if (usersData.length > 0) {
-          setSelectedUserId(usersData[0].id);
+        // Auto-select first user if available and no current user
+        if (usersData.length > 0 && !currentUserId) {
+          const firstUserId = usersData[0].id;
+          setSelectedUserId(firstUserId);
+          onUserChange(firstUserId);
+        } else if (currentUserId) {
+          setSelectedUserId(currentUserId);
         }
       })
       .catch((err) => setError(`Failed to load data: ${err.message}`));
   }, []);
+
+  // Sync selectedUserId with currentUserId from parent
+  useEffect(() => {
+    if (currentUserId && currentUserId !== selectedUserId) {
+      setSelectedUserId(currentUserId);
+    }
+  }, [currentUserId]);
 
   const handleQuizToggle = (quizId: string) => {
     setSelectedQuizIds((prev) =>
@@ -80,6 +91,7 @@ export function SessionStart({ config, onSessionStart }: SessionStartProps) {
       const newUser = await response.json();
       setUsers((prev) => [...prev, newUser]);
       setSelectedUserId(newUser.id);
+      onUserChange(newUser.id);
       setNewUserName('');
       setShowCreateUser(false);
     } catch (err) {
@@ -121,17 +133,22 @@ export function SessionStart({ config, onSessionStart }: SessionStartProps) {
       }
 
       const session = await response.json();
-      onSessionStart(session.id);
+      onSessionStart(session.id, selectedUserId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
       setLoading(false);
     }
   };
 
+  const handleUserSelect = (userId: string) => {
+    setSelectedUserId(userId);
+    onUserChange(userId);
+  };
+
   if (error && quizzes.length === 0) {
     return (
       <div style={{ padding: '2rem', color: theme.text }}>
-        <h2 style={{ color: 'red' }}>Error</h2>
+        <h2 style={{ color: '#ef4444' }}>Error</h2>
         <p>{error}</p>
       </div>
     );
@@ -153,8 +170,8 @@ export function SessionStart({ config, onSessionStart }: SessionStartProps) {
       {error && (
         <div
           style={{
-            backgroundColor: '#fee',
-            color: '#c00',
+            backgroundColor: '#fee2e2',
+            color: '#dc2626',
             padding: '1rem',
             borderRadius: '4px',
             marginBottom: '1rem',
@@ -179,7 +196,7 @@ export function SessionStart({ config, onSessionStart }: SessionStartProps) {
           <div>
             <select
               value={selectedUserId}
-              onChange={(e) => setSelectedUserId(e.target.value)}
+              onChange={(e) => handleUserSelect(e.target.value)}
               style={{
                 width: '100%',
                 padding: '0.75rem',
@@ -216,6 +233,38 @@ export function SessionStart({ config, onSessionStart }: SessionStartProps) {
                 </div>
               </div>
             )}
+
+            {/* Theme Selector */}
+            <div style={{ marginBottom: '1rem' }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '0.5rem',
+                  fontSize: '0.9rem',
+                }}
+              >
+                Theme:
+              </label>
+              <select
+                value={themeName}
+                onChange={(e) => setThemeName(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  fontSize: '1rem',
+                  borderRadius: '4px',
+                  border: `1px solid ${theme.accent}44`,
+                  backgroundColor: theme.background,
+                  color: theme.text,
+                }}
+              >
+                {Object.keys(config.themes).map((themeKey) => (
+                  <option key={themeKey} value={themeKey}>
+                    {themeKey.charAt(0).toUpperCase() + themeKey.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         ) : (
           <p>No users yet. Create one below.</p>

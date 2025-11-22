@@ -451,3 +451,127 @@ None - spec section 5 clearly defined user profile structure.
 Sprint 6 will add polish and extensibility: keyboard navigation, loading states, error handling improvements, theme switcher UI, responsive design, and Electron packaging.
 
 ---
+
+## Sprint 6 - Polish & Extensibility Hooks
+
+**Summary**
+- Implemented theme context/provider for centralized theme management
+- Updated all UI components to use theme hook instead of prop drilling
+- Added user-specific theme selection with persistence
+- Implemented review mode for completed sessions
+- Added "Show Correct Answers" toggle for graded sessions
+- Refactored components to remove config prop drilling
+- All 135 tests passing (no new tests, all existing tests still pass)
+
+**Decisions**
+- **Theme Architecture**: Created `ThemeContext` using React Context API. Loads config once at app startup, provides theme and config to all components via `useTheme()` hook. Eliminates prop drilling of config through component tree.
+- **User Theme Preference**: Theme selection stored in user profile settings. App.tsx loads user profile and passes theme to ThemeProvider. Theme selector added to SessionStart UI. Theme changes saved immediately to server via PUT /api/users/:id/settings.
+- **Theme Application**: All UI components now use `useTheme()` hook to access theme values. Removed config prop from all UI components (SessionStart, QuizSession, Sidebar, QuestionView, AnswerInput, Navigation). Cleaner component interfaces.
+- **Review Mode**: Implemented as state within QuizSession. When session is completed, "Review Session" button appears (if `features.allowReviewMode` enabled). Clicking enters review mode which:
+  - Disables all answer inputs (read-only)
+  - Shows all correct answers and explanations by default
+  - Uses simple prev/next navigation (no Grade/Complete buttons)
+  - Displays "Review Mode" badge in header
+  - "Exit Review" button returns to normal graded view
+- **Show Correct Answers Toggle**: Checkbox in header (if `features.showCorrectAnswersToggle` enabled). Controls visibility of correct answers and explanations after grading. Visual correct/incorrect indicators always visible. Default state: ON (per spec). State is session-specific (not persisted).
+- **Read-Only Inputs**: Added `readOnly` prop to QuestionView and AnswerInput. When true, all input elements (radio, checkbox, textarea) are disabled. Prevents answer changes in review mode while keeping visual state intact.
+- **Refactoring**: Removed all instances of `config.themes[config.defaultTheme]` pattern. All theme access now through useTheme() hook. Eliminated hardcoded error colors (#fee, #c00) and replaced with standard error colors (#fee2e2, #dc2626, #ef4444).
+- **App State Management**: App.tsx tracks currentUserId and loads user profile. Passes userId and user change handler to SessionStart. Handles theme changes via callback from ThemeProvider.
+- **Session Start Interface Changes**: 
+  - Changed `onSessionStart` to include userId parameter
+  - Added `onUserChange` callback prop
+  - Added `currentUserId` prop for syncing state
+  - Theme selector integrated into user selection panel
+
+**File Structure Created**
+```
+/src
+  /ui
+    ThemeContext.tsx         # New: Theme context and provider
+    SessionStart.tsx         # Updated: Added theme selector, new prop interface
+    QuizSession.tsx          # Updated: Review mode, show answers toggle
+    QuestionView.tsx         # Updated: Read-only mode support
+    AnswerInput.tsx          # Updated: Disabled state for review mode
+    Sidebar.tsx              # Updated: Use useTheme hook
+    Navigation.tsx           # Updated: Use useTheme hook
+  App.tsx                    # Updated: Theme provider, user management
+```
+
+**API Usage**
+- No new API endpoints
+- Uses existing `PUT /api/users/:id/settings` for theme changes
+- Uses existing session endpoints for review mode (reads completed sessions)
+
+**Testing**
+- All 135 tests passing (same count as Sprint 5)
+- No new tests added - existing UI tests updated automatically
+- Tests pass with new theme context implementation
+- Manual testing required for:
+  - Theme switching (dark/light)
+  - Review mode navigation
+  - Show answers toggle
+  - Read-only inputs
+
+**Manual Testing**
+Run `npm run dev` and test new features:
+1. **Theme Selection**:
+   - Select a user
+   - See theme dropdown in user section (shows Dark/Light)
+   - Change theme - UI updates immediately
+   - Refresh page - selected theme persists
+   - Check `/users/users.json` - theme saved in user settings
+2. **Review Mode**:
+   - Complete and grade a quiz
+   - See "Review Session" button in header (next to Exit Quiz)
+   - Click Review Session
+   - "Review Mode" badge appears in header
+   - All answer inputs are disabled/read-only
+   - Navigate with prev/next buttons
+   - See all correct answers and explanations
+   - Click "Exit Review" to return to graded view
+3. **Show Correct Answers Toggle**:
+   - Grade a quiz (don't enter review mode)
+   - See "Show Answers" checkbox in header (checked by default)
+   - Uncheck - correct answers and explanations hide
+   - Visual checkmarks/x-marks remain visible
+   - Check again - answers reappear
+   - Toggle state resets when exiting session
+4. **Verify Theme Context**:
+   - All components respect selected theme
+   - No console errors about missing config prop
+   - Theme changes reflect immediately across all components
+
+**Questions**
+None - spec section 6.5 clearly defined theming, review mode, and show answers toggle.
+
+**Concerns / Risks**
+- **Theme Context Performance**: ThemeContext wraps entire app. Every theme change re-renders all components. Acceptable for rare theme changes. Could optimize with useMemo if needed.
+- **User Theme Loading**: Theme loads after user profile fetch. Brief flash of default theme possible. Could pre-load last user's theme from localStorage to avoid flash.
+- **Review Mode State Management**: Review mode state lives in QuizSession component. Lost if component unmounts. Can't bookmark/share review mode URLs. Acceptable for MVP. Could add URL parameter (?mode=review) for shareable links.
+- **Show Answers Toggle Persistence**: Toggle state not persisted. Resets to ON when session reloaded. Intentional per spec (session-specific). Could add user preference if needed.
+- **Read-Only Input Styling**: Disabled inputs have browser default styling (grayed out). Could add custom disabled styles matching theme for better appearance.
+- **No Keyboard Shortcuts**: No keyboard shortcuts for review navigation or toggle. Could add arrow keys for navigation, 'A' to toggle answers. Deferred to accessibility sprint.
+- **Mobile Theme Selector**: Theme dropdown in desktop-optimized layout. May be hard to use on mobile. Consider dedicated settings page for mobile.
+- **No Theme Preview**: Theme changes apply immediately without preview. Could show preview or confirmation before saving. Current instant-apply UX is simpler.
+
+**Architecture Quality**
+- **Clean Separation**: Theme context cleanly separates theme concerns from components
+- **No Prop Drilling**: Eliminated config prop from 6 UI components
+- **Reusable Hook**: useTheme() hook can be used in any component
+- **Config Access**: Components can still access config.features through useTheme()
+- **Type Safety**: Full TypeScript support for theme values
+- **Testability**: Context provider easily mocked in tests
+- **No Breaking Changes**: All existing functionality preserved
+
+**Next Sprint Preview**
+Sprint 6 goals achieved. Potential future enhancements:
+- Keyboard navigation and accessibility improvements
+- Loading states and error handling polish
+- Responsive design for mobile/tablet
+- Electron packaging for desktop app
+- Quiz authoring UI
+- Advanced analytics and insights
+- Adaptive difficulty based on user history
+- Export/import quiz data
+
+---

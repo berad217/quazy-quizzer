@@ -6,8 +6,8 @@
 
 import React from 'react';
 import { SessionQuestion, AnswerValue } from '../quiz-engine/session';
-import { AppConfig } from '../config/types';
 import { AnswerInput } from './AnswerInput';
+import { useTheme } from './ThemeContext';
 
 interface QuestionViewProps {
   sessionQuestion: SessionQuestion;
@@ -15,10 +15,10 @@ interface QuestionViewProps {
   totalQuestions: number;
   currentAnswer: AnswerValue | undefined;
   onAnswerChange: (value: AnswerValue) => void;
-  config: AppConfig;
   showCorrect?: boolean;
   correctAnswer?: any;
   isCorrect?: boolean;
+  readOnly?: boolean;
 }
 
 export function QuestionView({
@@ -27,12 +27,12 @@ export function QuestionView({
   totalQuestions,
   currentAnswer,
   onAnswerChange,
-  config,
   showCorrect = false,
   correctAnswer,
   isCorrect,
+  readOnly = false,
 }: QuestionViewProps) {
-  const theme = config.themes[config.defaultTheme];
+  const { theme } = useTheme();
   const question = sessionQuestion.question;
 
   return (
@@ -101,9 +101,9 @@ export function QuestionView({
         question={question}
         currentAnswer={currentAnswer}
         onAnswerChange={onAnswerChange}
-        config={config}
         showCorrect={showCorrect}
         correctAnswer={correctAnswer}
+        readOnly={readOnly}
       />
 
       {/* Explanation (if available and showing correct answers) */}

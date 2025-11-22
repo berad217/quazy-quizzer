@@ -14,26 +14,26 @@ import {
   ShortAnswerQuestion,
 } from '../quiz-engine/schema';
 import { AnswerValue } from '../quiz-engine/session';
-import { AppConfig } from '../config/types';
+import { useTheme } from './ThemeContext';
 
 interface AnswerInputProps {
   question: Question;
   currentAnswer: AnswerValue | undefined;
   onAnswerChange: (value: AnswerValue) => void;
-  config: AppConfig;
   showCorrect?: boolean;
   correctAnswer?: any;
+  readOnly?: boolean;
 }
 
 export function AnswerInput({
   question,
   currentAnswer,
   onAnswerChange,
-  config,
   showCorrect = false,
   correctAnswer,
+  readOnly = false,
 }: AnswerInputProps) {
-  const theme = config.themes[config.defaultTheme];
+  const { theme } = useTheme();
 
   switch (question.type) {
     case 'multiple_choice_single': {
@@ -81,6 +81,7 @@ export function AnswerInput({
                   name="answer"
                   checked={isSelected}
                   onChange={() => onAnswerChange(index)}
+                  disabled={readOnly}
                   style={{ marginRight: '0.75rem' }}
                 />
                 {choice}
@@ -152,6 +153,7 @@ export function AnswerInput({
                   type="checkbox"
                   checked={isSelected}
                   onChange={() => toggleChoice(index)}
+                  disabled={readOnly}
                   style={{ marginRight: '0.75rem' }}
                 />
                 {choice}
@@ -216,6 +218,7 @@ export function AnswerInput({
                   name="answer"
                   checked={isSelected}
                   onChange={() => onAnswerChange(value)}
+                  disabled={readOnly}
                   style={{ marginRight: '0.75rem' }}
                 />
                 {label}
@@ -240,6 +243,7 @@ export function AnswerInput({
             onChange={(e) => onAnswerChange(e.target.value)}
             placeholder="Type your answer here..."
             rows={question.type === 'short_answer' ? 5 : 2}
+            disabled={readOnly}
             style={{
               width: '100%',
               padding: '1rem',
