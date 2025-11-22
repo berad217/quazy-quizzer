@@ -154,3 +154,300 @@ None - spec was clear about validation rules and question types.
 Sprint 3 will implement the session engine: session creation, question randomization, answer storage, and grading logic.
 
 ---
+
+## Sprint 3 - Session Engine
+
+**Summary**
+- Implemented complete session engine for quiz sessions
+- Built session creation with quiz combination, deduplication, randomization, and limiting
+- Implemented answer storage and update functionality
+- Created comprehensive grading logic for all 5 question types
+- Added text normalization for fill_in_blank and short_answer questions
+- Implemented session progress tracking and completion
+- Added 6 new API endpoints for session management
+- Created in-memory session store service
+- Wrote 55 new tests (134 total passing)
+
+**Decisions**
+- **Composite Keys**: Used `quizId::questionId` format for unique question identification across multiple quiz sets, as specified in spec section 6.2. This prevents ID collisions when combining questions from different quizzes.
+- **Deduplication Strategy**: When creating sessions from multiple quizzes, questions with the same composite key are deduplicated (first occurrence is kept). This handles cases where the same question appears in multiple quiz sets.
+- **Randomization**: Fisher-Yates shuffle algorithm for unbiased randomization. Applied after deduplication and before limiting to ensure limit gets random subset.
+- **Text Normalization**: Implemented normalization for text answers (fill_in_blank and short_answer):
+  - Lowercase conversion
+  - Whitespace trimming and collapsing
+  - Removal of common articles (a, an, the)
+  - Applied when `normalize: true` flag is set, or for short_answer comparison
+- **Short Answer Grading**: Chose normalized exact match approach. If question.correct is not provided, returns false (requires manual grading). This addresses the concern from Sprint 2. Can add fuzzy matching later if needed.
+- **Session Storage**: In-memory Map-based storage for sessions. Simple and fast for prototype. Ready to swap for database/file persistence when needed (good separation of concerns).
+- **Session State**: Sessions track:
+  - Questions with composite keys and original quiz context
+  - Answers with values and timestamps
+  - Grading results (isCorrect populated after grading)
+  - Completion timestamp (optional)
+- **API Design**: RESTful session endpoints:
+  - `POST /api/sessions` - create new session
+  - `GET /api/sessions/:id` - get session
+  - `GET /api/sessions/user/:userId` - list user's sessions
+  - `POST /api/sessions/:id/answer` - submit answer
+  - `POST /api/sessions/:id/grade` - grade session
+  - `POST /api/sessions/:id/complete` - mark complete
+  - `GET /api/sessions/:id/progress` - get progress
+
+**File Structure Created**
+```
+/src
+  /quiz-engine
+    session.ts                # Session types and logic
+    session.test.ts           # Session tests (36 tests)
+/server
+  sessionService.ts          # Session store service
+  app.ts                     # Updated with session endpoints
+  app.test.ts                # Updated with session API tests (32 tests)
+```
+
+**Testing**
+- Added 55 new tests across 2 test files
+- Total: 134 tests passing (up from 79)
+- Coverage:
+  - Session engine: creation, randomization, deduplication, limiting (10 tests)
+  - Answer updates and storage (3 tests)
+  - Grading for all 5 question types (8 tests)
+  - Text normalization (5 tests)
+  - Progress tracking and completion (3 tests)
+  - Multi-quiz sessions (7 tests)
+  - Session API endpoints (19 tests)
+- All tests passing
+
+**Manual Testing**
+Run `npm run dev` and test session workflow:
+1. Create session: `POST /api/sessions` with userId and selectedQuizIds
+2. Submit answers: `POST /api/sessions/:id/answer` with compositeKey and value
+3. Check progress: `GET /api/sessions/:id/progress`
+4. Grade session: `POST /api/sessions/:id/grade` to see results
+5. Complete session: `POST /api/sessions/:id/complete`
+6. List user sessions: `GET /api/sessions/user/:userId`
+
+**Questions**
+None - spec section 6.2 and 6.4 clearly defined session structure and grading requirements.
+
+**Concerns / Risks**
+- **Normalization Scope**: Current normalization removes articles (a, an, the) which works for English but may need localization support. Also, "the answer" vs "answer" are treated identically - this might be too aggressive for some use cases. Consider making normalization rules configurable.
+- **Short Answer Limitations**: Current exact-match-with-normalization approach is simple but won't catch near-matches or synonyms. For example, "automobile" vs "car" would be marked incorrect. Future enhancement: add Levenshtein distance threshold or keyword matching.
+- **Session Persistence**: In-memory storage means all sessions are lost on server restart. Fine for development, but Sprint 5 (User Profiles & Persistence) will need to persist sessions to disk or database.
+- **Session Cleanup**: No automatic cleanup of old/completed sessions. Memory will grow unbounded. Should add: TTL for completed sessions, user-initiated deletion, or periodic cleanup job. Not critical for single-user prototype.
+- **Grading Timing**: Currently grading is explicit (POST /api/sessions/:id/grade). Spec mentions "show correct answers toggle" which implies on-demand grading. Current design supports this, but UI will need to decide when to call grade endpoint.
+- **Answer Type Validation**: updateAnswer() accepts any AnswerValue but doesn't validate it matches the question type (e.g., ensuring boolean for true_false). Grading handles type mismatches by returning false, but earlier validation would give better error messages. Trade-off: simplicity vs. strictness.
+
+**Resolved from Sprint 2**
+- ✅ **Composite Keys**: Implemented `quizId::questionId` format as planned
+- ✅ **Text Normalization**: Implemented with lowercase, trim, article removal, space collapsing
+- ✅ **Short Answer Grading**: Using normalized exact match; manual grading needed when no correct answer provided
+
+**Next Sprint Preview**
+Sprint 4 will implement the basic UI: sidebar navigation, question view, answer input components, and session flow.
+
+---
+
+## Sprint 4 - Basic UI
+
+**Summary**
+- Implemented complete quiz user interface
+- Created session start screen for quiz selection and configuration
+- Built sidebar with question list and status indicators
+- Implemented question renderer for all 5 question types
+- Created answer input components with type-specific UI
+- Added navigation controls (prev/next) and session management
+- Wired all UI components to session API endpoints
+- Updated App component tests to match new UI structure
+- All 134 tests passing (no new tests, existing tests updated)
+
+**Decisions**
+- **Component Structure**: Modular design with separate components for each UI concern:
+  - `SessionStart.tsx` - Quiz selection and session configuration
+  - `QuizSession.tsx` - Main session container and state management
+  - `Sidebar.tsx` - Question list with status indicators
+  - `QuestionView.tsx` - Current question display
+  - `AnswerInput.tsx` - Type-specific answer inputs
+  - `Navigation.tsx` - Prev/Next buttons and session controls
+- **State Management**: React useState for local component state, no external state library needed. Session data fetched from API and cached in QuizSession component.
+- **Styling Approach**: Inline styles using theme from config. No CSS files or CSS-in-JS library. Keeps styling simple and tied directly to theme configuration. Easy to see all styles in component code.
+- **Status Indicators**: Three states for questions in sidebar:
+  - Unanswered: ○ (empty circle, gray)
+  - Answered: ● (filled circle, accent color)
+  - Graded Correct: ✓ (checkmark, green)
+  - Graded Incorrect: ✗ (x mark, red)
+- **Question Jump**: Respects `allowQuestionJump` config flag. When true, clicking sidebar items navigates to that question. When false, must use prev/next buttons.
+- **Grading Flow**: "Grade Quiz" button appears when all questions answered. After grading, correct answers and explanations are shown. "Complete Quiz" button appears after grading.
+- **Answer Input UX**:
+  - Multiple choice: Radio buttons (single) or checkboxes (multi)
+  - True/False: Large button-style radio options
+  - Fill-in-blank: Single-line textarea
+  - Short answer: Multi-line textarea
+  - All inputs styled consistently with theme
+  - Hover effects for better interactivity
+- **Responsive Design**: Sidebar has fixed width from theme config (260px default). Main content area is flexible. No mobile optimization yet (deferred to Sprint 6).
+
+**File Structure Created**
+```
+/src
+  /ui
+    SessionStart.tsx        # Quiz selection screen
+    QuizSession.tsx         # Main session container
+    Sidebar.tsx             # Question list sidebar
+    QuestionView.tsx        # Question display
+    AnswerInput.tsx         # Type-specific inputs
+    Navigation.tsx          # Navigation controls
+  App.tsx                   # Updated to use new UI
+  App.test.tsx              # Updated tests
+```
+
+**Testing**
+- Updated existing 8 App tests to work with new UI
+- Total: 134 tests passing (same as Sprint 3)
+- Manual testing workflow:
+  1. Start app with `npm run dev`
+  2. Select quizzes and configure options
+  3. Start session and answer questions
+  4. Navigate with prev/next or click sidebar (if allowed)
+  5. Grade quiz to see results
+  6. Complete quiz
+
+**Manual Testing Notes**
+Run `npm run dev` and test complete workflow:
+1. **Session Start**:
+   - See list of available quizzes
+   - Select one or more quizzes
+   - Configure user ID, randomize, and limit options
+   - Start quiz button enabled only when quiz selected
+2. **Quiz Session**:
+   - Sidebar shows all questions with status
+   - Current question highlighted in sidebar
+   - Question text displays with metadata (type, difficulty, category)
+   - Answer input appropriate for question type
+   - Prev/Next buttons work correctly (disabled at boundaries)
+   - Answers save automatically when changed
+   - Progress counter updates in sidebar
+3. **Grading**:
+   - "Grade Quiz" button enabled when all answered
+   - After grading, results show per-question (✓/✗)
+   - Correct answers displayed
+   - Explanations shown (if available)
+   - Score displayed in header
+4. **Completion**:
+   - "Complete Quiz" button enabled after grading
+   - Quiz marked as completed
+   - Can still navigate to review answers
+
+**Questions**
+None - spec section 6.3 clearly defined sidebar and navigation requirements.
+
+**Concerns / Risks**
+- **No Mobile Support**: Current design assumes desktop/laptop screen size. Sidebar is fixed-width and always visible. On mobile, sidebar would need to be collapsible or bottom-nav style. Deferred to Sprint 6 polish.
+- **No Keyboard Navigation**: Arrow keys, Enter to submit, etc. would improve accessibility. Not critical for MVP but should add in Sprint 6.
+- **No Answer Validation**: UI doesn't prevent submitting empty/invalid answers (grading handles it). Could add client-side validation for better UX.
+- **No Loading States**: When submitting answers or grading, no visual feedback that request is in progress. Could add spinners/disabled states.
+- **No Offline Support**: All API calls fail if server is down. No queuing or retry logic. Acceptable for local app on same machine.
+- **Inline Styles Scalability**: Using inline styles keeps Sprint 4 simple, but might become unwieldy with more complex UI. If we add many components in Sprint 6, consider migrating to CSS modules or styled-components.
+- **Theme Customization**: Users can edit config file to change colors, but changes require server restart. Hot-reloading themes would be nice dev experience improvement.
+
+**Next Sprint Preview**
+Sprint 5 will implement user profiles and persistence: user selection/creation, session history, progress tracking, and data persistence to disk.
+
+---
+
+## Sprint 5 - User Profiles & Persistence
+
+**Summary**
+- Implemented user profile system with file-based persistence
+- Created user selection and creation UI
+- Added quiz completion tracking and statistics
+- Implemented per-question performance history
+- Built user storage service with JSON file persistence
+- Added 5 new user API endpoints
+- Updated session completion to record stats to user profiles
+- Updated UI to require user selection before starting quiz
+- All 135 tests passing (1 new test added)
+
+**Decisions**
+- **Storage Format**: JSON file at `/users/users.json` following spec format. Simple, human-readable, easy to backup. File is created automatically if missing.
+- **User ID Generation**: Auto-generate from name (lowercase, spaces to underscores). Prevents duplicate IDs by checking existing users. Simple and predictable.
+- **User Stats Tracking**: On quiz completion, record:
+  - Per-quiz stats: attempts, lastScore, bestScore, lastCompletedAt
+  - Per-question stats: timesSeen, timesCorrect, lastAnswer, lastResult
+  - Uses composite keys (quizId::questionId) for question history
+- **UI Flow**: Users must select/create user before starting quiz. Dropdown shows existing users with basic stats. "Create New User" button reveals inline form.
+- **Data Persistence**: Async file operations with error handling. Failed user stats recording logs error but doesn't break session completion. Ensures quiz can still complete even if user file is locked/corrupted.
+- **User Activity Tracking**: lastActiveAt timestamp updated on quiz completion. Could add on session start in future.
+- **Settings Support**: User settings structure ready (theme, fontScale) but not yet wired to UI. Deferred to Sprint 6.
+
+**File Structure Created**
+```
+/src
+  /storage
+    userProfile.ts           # User profile types
+/server
+  userService.ts             # User file I/O service
+  app.ts                     # Updated with user endpoints
+/users
+  users.json                 # User data file (created on first use)
+/src/ui
+  SessionStart.tsx           # Updated with user selection
+```
+
+**API Endpoints Added**
+- `GET /api/users` - list all users
+- `GET /api/users/:id` - get specific user
+- `POST /api/users` - create new user (body: {id, name})
+- `DELETE /api/users/:id` - delete user
+- `PUT /api/users/:id/settings` - update user settings
+- Updated `POST /api/sessions/:id/complete` - now records stats to user profile
+
+**Testing**
+- Updated existing 8 App tests to mock user API calls
+- 1 new test added for user selection UI
+- Total: 135 tests passing (up from 134)
+- User service tested indirectly through API endpoints
+- Manual testing required for file persistence
+
+**Manual Testing**
+Run `npm run dev` and test user workflow:
+1. **First Run**:
+   - No users exist, see "No users yet" message
+   - Click "Create New User"
+   - Enter name, click Create
+   - User appears in dropdown, auto-selected
+   - `/users/users.json` file created with user data
+2. **User Selection**:
+   - Dropdown shows all users
+   - Selecting user shows completed sets and last active date
+   - Can create additional users
+   - Start Quiz button disabled until user selected
+3. **Quiz Completion**:
+   - Complete quiz and grade
+   - Click "Complete Quiz"
+   - Check `/users/users.json` - stats updated:
+     - completedSets incremented
+     - questionHistory updated with results
+     - lastActiveAt timestamp updated
+4. **Persistence**:
+   - Restart server
+   - Users persist across restarts
+   - Stats maintained
+
+**Questions**
+None - spec section 5 clearly defined user profile structure.
+
+**Concerns / Risks**
+- **File Locking**: No file locking mechanism. Concurrent writes from multiple sessions could corrupt users.json. Acceptable for single-user local app. Would need proper database for multi-user.
+- **No User Authentication**: User selection is trust-based dropdown. Anyone can select any user. Fine for family use. If needed later, could add PIN codes or profiles.
+- **No Backup/Export**: Users.json is only copy of data. Should add export/import feature in Sprint 6. Manual backup works (just copy file).
+- **No User Deletion UI**: API endpoint exists but no UI button. Low priority since users rarely need deletion.
+- **Performance with Many Users**: Linear search through users array. Fine for family use (5-10 users). Would need indexing for 100+ users.
+- **No Data Migration**: If we change user data structure later, need to handle migrations. Current approach: spec is stable, minimal risk.
+- **Question History Growth**: questionHistory grows unbounded. Each question attempt adds/updates entry. Could grow large over years. Consider archiving old data or summarizing stats in Sprint 6.
+- **No Session History**: User profile tracks completion stats but doesn't store full session objects. Can't replay old sessions. Deferred to future enhancement.
+
+**Next Sprint Preview**
+Sprint 6 will add polish and extensibility: keyboard navigation, loading states, error handling improvements, theme switcher UI, responsive design, and Electron packaging.
+
+---
