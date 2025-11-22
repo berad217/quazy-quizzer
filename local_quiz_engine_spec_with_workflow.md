@@ -334,6 +334,72 @@ Per type:
 
 Visibility of correct answers controlled by `showCorrectAnswersToggle` and explicit user action.
 
+### 6.5 Polish Features (Sprint 6)
+
+#### Theming
+
+UI components should read theme values from the loaded config and apply them dynamically:
+
+- **Colors**: Use `background`, `panel`, `accent`, `text` from the active theme
+- **Typography**: Apply `fontFamily` and `questionTextSize`
+- **Layout**: Use `sidebarWidth`
+- **Theme Selection**: User can select theme via settings (stored in user profile)
+- **Fallback**: If theme not set in user profile, use `defaultTheme` from config
+
+Implementation approach:
+- Create a theme context/provider that loads config on startup
+- Pass theme values to all UI components via props or context
+- Replace hardcoded inline styles with theme-based values
+- No CSS files needed; continue using inline styles with theme values
+
+#### Review Mode
+
+**Purpose**: Allow users to review completed sessions to learn from mistakes.
+
+**Behavior**:
+- Enabled by `features.allowReviewMode` config flag
+- Available after a session is graded and completed
+- Provides read-only view of all questions, user answers, correct answers, and explanations
+- Accessible from user stats/session history
+
+**UI Flow**:
+1. After completing and grading a session, user sees "Review Session" button (if flag enabled)
+2. Clicking enters review mode - shows full session with all questions
+3. Each question displays:
+   - Question text and choices/prompts
+   - User's answer (marked correct/incorrect)
+   - Correct answer(s)
+   - Explanation if available
+4. Navigation works same as quiz session (sidebar, prev/next)
+5. "Exit Review" button returns to stats/home screen
+
+**Data Requirements**:
+- No new data structures needed - uses completed session object
+- Session must have `completedAt` timestamp and graded answers
+
+#### Show Correct Answers Toggle
+
+**Purpose**: Give users control over whether they see answers immediately after grading or try to figure them out first.
+
+**Behavior**:
+- Enabled by `features.showCorrectAnswersToggle` config flag
+- Toggle appears after session is graded (not during quiz-taking)
+- Controls visibility of:
+  - Correct answer values
+  - Explanations
+  - Visual indicators stay visible (correct/incorrect status)
+
+**UI Implementation**:
+1. After grading, results view shows toggle control: "Show Correct Answers [ON/OFF]"
+2. Default state: ON (show answers immediately)
+3. When OFF: hide correct answers and explanations, only show whether user was right/wrong
+4. When ON: display correct answers and explanations for all questions
+5. Toggle state is session-specific (not persisted across sessions)
+
+**Interaction with Review Mode**:
+- If review mode entered from a graded session, toggle state carries over
+- If review mode accessed later (from history), default to ON
+
 ---
 
 ## 7. Module Boundaries
@@ -434,10 +500,26 @@ Suggested baseline sequence for an AI agent:
    - Add DEVLOG entry.
 
 6. **Sprint 6 — Polish & Extensibility Hooks**
-   - Apply theming from config.
-   - Add optional features (review mode, show answers toggle).
-   - Refactor any epoxy.
-   - Add DEVLOG entry including refactor notes.
+   - **Theming**:
+     - Create theme context/provider that loads config and exposes theme values
+     - Update all UI components to use theme values instead of hardcoded colors/fonts
+     - Add theme selector to user settings (persist theme choice in user profile)
+     - Test both dark and light themes
+   - **Review Mode** (if `features.allowReviewMode` enabled):
+     - Add "Review Session" button to completed session results
+     - Create review view component (read-only version of QuizSession)
+     - Display all questions with user answers, correct answers, and explanations
+     - Add "Exit Review" navigation
+   - **Show Correct Answers Toggle** (if `features.showCorrectAnswersToggle` enabled):
+     - Add toggle control to graded session results view
+     - Implement state management for toggle (default: ON)
+     - Conditionally render correct answers/explanations based on toggle state
+     - Maintain visual correct/incorrect indicators regardless of toggle
+   - **Refactoring**:
+     - Audit for tight coupling between modules
+     - Extract any hardcoded values to config
+     - Verify clean separation between engine, storage, and UI layers
+   - Add DEVLOG entry including refactor notes and design decisions.
 
 Each sprint should be small enough to review quickly.
 
