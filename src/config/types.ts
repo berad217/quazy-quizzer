@@ -25,6 +25,17 @@ export interface FeatureFlags {
 }
 
 /**
+ * Grading configuration for text answer evaluation
+ */
+export interface GradingConfig {
+  enableFuzzyMatching: boolean;        // default: true
+  fuzzyMatchThreshold: number;         // 0-1, default: 0.8 (80%)
+  enablePartialCredit: boolean;        // default: false
+  partialCreditThreshold: number;      // 0-1, default: 0.6 (60%)
+  partialCreditValue: number;          // 0-1, default: 0.5 (50%)
+}
+
+/**
  * Main application configuration
  */
 export interface AppConfig {
@@ -36,4 +47,5 @@ export interface AppConfig {
   quizFolder: string;
   userDataFile: string;
   features: FeatureFlags;
+  grading: GradingConfig;
 }

@@ -17,6 +17,7 @@ import {
   GradingResult,
 } from '../src/quiz-engine/session.js';
 import { QuizRegistry } from '../src/quiz-engine/schema.js';
+import { GradingConfig } from '../src/config/types.js';
 
 /**
  * In-memory session store
@@ -63,12 +64,12 @@ class SessionStore {
   /**
    * Grades a session
    */
-  grade(sessionId: string): GradingResult {
+  grade(sessionId: string, gradingConfig: GradingConfig): GradingResult {
     const session = this.sessions.get(sessionId);
     if (!session) {
       throw new Error(`Session not found: ${sessionId}`);
     }
-    return gradeSession(session);
+    return gradeSession(session, gradingConfig);
   }
 
   /**

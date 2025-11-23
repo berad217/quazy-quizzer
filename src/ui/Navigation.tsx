@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { AppConfig } from '../config/types';
+import { useTheme } from './ThemeContext';
 
 interface NavigationProps {
   currentIndex: number;
@@ -14,7 +14,6 @@ interface NavigationProps {
   onNext: () => void;
   onGrade: () => void;
   onComplete: () => void;
-  config: AppConfig;
   isGraded: boolean;
   isCompleted: boolean;
   allAnswered: boolean;
@@ -27,12 +26,11 @@ export function Navigation({
   onNext,
   onGrade,
   onComplete,
-  config,
   isGraded,
   isCompleted,
   allAnswered,
 }: NavigationProps) {
-  const theme = config.themes[config.defaultTheme];
+  const { theme, config } = useTheme();
 
   const isFirst = currentIndex === 0;
   const isLast = currentIndex === totalQuestions - 1;

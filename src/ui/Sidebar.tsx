@@ -6,13 +6,12 @@
 
 import React from 'react';
 import { Session } from '../quiz-engine/session';
-import { AppConfig } from '../config/types';
+import { useTheme } from './ThemeContext';
 
 interface SidebarProps {
   session: Session;
   currentQuestionIndex: number;
   gradingResults: { [compositeKey: string]: { isCorrect: boolean } } | null;
-  config: AppConfig;
   onQuestionSelect: (index: number) => void;
 }
 
@@ -20,10 +19,9 @@ export function Sidebar({
   session,
   currentQuestionIndex,
   gradingResults,
-  config,
   onQuestionSelect,
 }: SidebarProps) {
-  const theme = config.themes[config.defaultTheme];
+  const { theme, config } = useTheme();
   const allowJump = config.features.allowQuestionJump;
 
   const getQuestionStatus = (compositeKey: string): 'unanswered' | 'answered' | 'correct' | 'incorrect' => {

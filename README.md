@@ -6,7 +6,7 @@ A modular, file-driven quiz system for local use. Built for kids to practice wit
 
 Currently implementing according to sprint-based workflow. See [DEVLOG.md](./DEVLOG.md) for progress.
 
-**Current Sprint**: Sprint 5 - User Profiles & Persistence ✓
+**Current Sprint**: Sprint 6 - Polish & Extensibility Hooks ✓
 
 ## Quick Start
 
@@ -41,7 +41,7 @@ npm run test:ui
 npm run test:coverage
 ```
 
-**Test Coverage**: 134 tests across config, schema validation, quiz loading, session engine, server API, and UI components.
+**Test Coverage**: 135 tests across config, schema validation, quiz loading, session engine, server API, and UI components.
 
 ## Project Structure
 
