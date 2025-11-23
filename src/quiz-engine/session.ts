@@ -13,6 +13,8 @@ import {
   AcceptableAnswer,
   MatchResult,
 } from '../grading/fuzzyMatch';
+import { SkillLevels } from '../adaptive/eloRating';
+import { selectAdaptiveQuestions } from '../adaptive/questionSelector';
 
 /**
  * SessionQuestion wraps a question with session context
@@ -74,6 +76,9 @@ export interface CreateSessionOptions {
   selectedQuizIds: string[];
   randomize?: boolean; // default from config if not provided
   limit?: number; // cap total questions
+  adaptive?: boolean; // use adaptive difficulty (Sprint 8)
+  targetAccuracy?: number; // target accuracy for adaptive mode (0-1)
+  userSkills?: SkillLevels; // user skill levels for adaptive mode
 }
 
 /**
@@ -106,14 +111,22 @@ export interface GradingResult {
  * 1. Collect all questions from selected quiz sets
  * 2. Tag each with quizId and composite key (quizId::questionId)
  * 3. Deduplicate by composite key (keeps first occurrence)
- * 4. Optionally shuffle if randomize is true
+ * 4. Use adaptive selection if enabled, otherwise shuffle if randomize is true
  * 5. Apply limit if provided
  */
 export function createSession(
   registry: QuizRegistry,
   options: CreateSessionOptions
 ): Session {
-  const { userId, selectedQuizIds, randomize = false, limit } = options;
+  const {
+    userId,
+    selectedQuizIds,
+    randomize = false,
+    limit,
+    adaptive = false,
+    targetAccuracy = 0.7,
+    userSkills = {}
+  } = options;
 
   // Validate selected quiz IDs exist
   for (const quizId of selectedQuizIds) {
@@ -123,7 +136,7 @@ export function createSession(
   }
 
   // Collect all questions from selected quizzes
-  const collectedQuestions: SessionQuestion[] = [];
+  const collectedQuestions: Array<{ question: Question; compositeKey: string }> = [];
   const seenKeys = new Set<string>();
 
   for (const quizId of selectedQuizIds) {
@@ -139,29 +152,50 @@ export function createSession(
 
       seenKeys.add(compositeKey);
       collectedQuestions.push({
-        quizId,
-        questionId: question.id,
-        compositeKey,
-        index: collectedQuestions.length, // temporary, will be reassigned
         question,
+        compositeKey
       });
     }
   }
 
-  // Shuffle if requested
-  let finalQuestions = [...collectedQuestions];
-  if (randomize) {
-    finalQuestions = shuffleArray(finalQuestions);
+  // Select questions: adaptive or random/sequential
+  let selectedQuestions: Array<{ question: Question; compositeKey: string }>;
+
+  if (adaptive && userSkills && Object.keys(userSkills).length > 0) {
+    // Use adaptive selection
+    const count = limit && limit > 0 ? limit : collectedQuestions.length;
+    selectedQuestions = selectAdaptiveQuestions(
+      collectedQuestions,
+      userSkills,
+      count,
+      targetAccuracy,
+      randomize
+    );
+  } else {
+    // Use traditional selection
+    selectedQuestions = [...collectedQuestions];
+
+    // Shuffle if requested
+    if (randomize) {
+      selectedQuestions = shuffleArray(selectedQuestions);
+    }
+
+    // Apply limit if provided
+    if (limit !== undefined && limit > 0) {
+      selectedQuestions = selectedQuestions.slice(0, limit);
+    }
   }
 
-  // Apply limit if provided
-  if (limit !== undefined && limit > 0) {
-    finalQuestions = finalQuestions.slice(0, limit);
-  }
-
-  // Reassign indices to final order
-  finalQuestions.forEach((q, idx) => {
-    q.index = idx;
+  // Convert to SessionQuestion format with proper indices
+  const finalQuestions: SessionQuestion[] = selectedQuestions.map(({ question, compositeKey }, idx) => {
+    const [quizId, questionId] = compositeKey.split('::');
+    return {
+      quizId,
+      questionId,
+      compositeKey,
+      index: idx,
+      question
+    };
   });
 
   // Create session

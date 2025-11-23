@@ -45,4 +45,11 @@ export const DEFAULT_CONFIG: AppConfig = {
     partialCreditThreshold: 0.6,
     partialCreditValue: 0.5,
   },
+  adaptive: {
+    enabled: true,
+    defaultTargetAccuracy: 0.7,
+    adjustmentSpeed: 0.5,
+    minQuestionsForAdaptation: 5,
+    categoryDetection: 'auto',
+  },
 };

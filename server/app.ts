@@ -57,11 +57,11 @@ export function createApp(config: AppConfig, quizRegistry: QuizRegistry) {
   /**
    * POST /api/sessions
    * Creates a new quiz session
-   * Body: { userId, selectedQuizIds, randomize?, limit? }
+   * Body: { userId, selectedQuizIds, randomize?, limit?, adaptive?, targetAccuracy? }
    */
   app.post('/api/sessions', (req, res) => {
     try {
-      const { userId, selectedQuizIds, randomize, limit } = req.body;
+      const { userId, selectedQuizIds, randomize, limit, adaptive, targetAccuracy } = req.body;
 
       if (!userId || !selectedQuizIds || !Array.isArray(selectedQuizIds)) {
         return res.status(400).json({
@@ -69,11 +69,21 @@ export function createApp(config: AppConfig, quizRegistry: QuizRegistry) {
         });
       }
 
+      // Get user profile for adaptive mode
+      let userSkills;
+      if (adaptive && config.adaptive.enabled) {
+        const user = userService.getUser(userId);
+        userSkills = user?.skillLevels || {};
+      }
+
       const session = sessionStore.create(quizRegistry, {
         userId,
         selectedQuizIds,
         randomize,
         limit,
+        adaptive: adaptive && config.adaptive.enabled,
+        targetAccuracy: targetAccuracy || config.adaptive.defaultTargetAccuracy,
+        userSkills,
       });
 
       res.status(201).json(session);
@@ -187,6 +197,29 @@ export function createApp(config: AppConfig, quizRegistry: QuizRegistry) {
       } catch (userError) {
         console.error('Failed to record quiz completion for user:', userError);
         // Continue anyway - session is still completed
+      }
+
+      // Update user skill levels (Sprint 8)
+      if (config.adaptive.enabled) {
+        try {
+          const questionResults: { [compositeKey: string]: { question: any; score: number } } = {};
+
+          for (const sessionQuestion of session.questions) {
+            const result = gradingResult.perQuestion[sessionQuestion.compositeKey];
+            if (result) {
+              questionResults[sessionQuestion.compositeKey] = {
+                question: sessionQuestion.question,
+                score: result.score !== undefined ? result.score : (result.isCorrect ? 1 : 0)
+              };
+            }
+          }
+
+          const adjustmentSpeed = config.adaptive.adjustmentSpeed * 64; // Convert 0-1 to K factor (0-64)
+          await userService.updateUserSkills(session.userId, questionResults, adjustmentSpeed);
+        } catch (skillError) {
+          console.error('Failed to update user skills:', skillError);
+          // Continue anyway - session is still completed
+        }
       }
 
       res.json(session);

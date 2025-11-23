@@ -33,6 +33,26 @@ export interface UserSettings {
 }
 
 /**
+ * Skill level for a specific category (Sprint 8)
+ */
+export interface SkillLevel {
+  estimatedLevel: number;      // 1-5, Elo-like rating
+  confidence: number;           // 0-1, how sure we are
+  lastUpdated: string;          // ISO timestamp
+  questionsAttempted: number;
+  recentPerformance: number[];  // last 10 attempts (0 or 1)
+}
+
+/**
+ * Adaptive difficulty preferences (Sprint 8)
+ */
+export interface AdaptivePreferences {
+  enabled: boolean;                // User wants adaptive mode
+  targetAccuracy: number;          // 0-1, desired accuracy
+  adjustmentSpeed: number;         // 0-1, how fast to adapt
+}
+
+/**
  * User Profile
  */
 export interface UserProfile {
@@ -47,6 +67,11 @@ export interface UserProfile {
     [compositeKey: string]: QuestionPerformance;
   };
   settings: UserSettings;
+  // Sprint 8: Adaptive difficulty
+  skillLevels?: {
+    [category: string]: SkillLevel;
+  };
+  adaptivePreferences?: AdaptivePreferences;
 }
 
 /**

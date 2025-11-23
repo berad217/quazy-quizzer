@@ -67,10 +67,31 @@ export function QuestionView({
         >
           Question {questionNumber} of {totalQuestions}
         </div>
-        <div style={{ fontSize: '0.85rem', opacity: 0.6 }}>
-          Type: {question.type.replace(/_/g, ' ')}
-          {question.meta?.difficulty && ` • Difficulty: ${question.meta.difficulty}`}
-          {question.meta?.category && ` • Category: ${question.meta.category}`}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.85rem', opacity: 0.6 }}>
+          <span>Type: {question.type.replace(/_/g, ' ')}</span>
+          {question.meta?.category && <span>Category: {question.meta.category}</span>}
+          {question.meta?.difficulty && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span>Difficulty:</span>
+              <div style={{ display: 'flex', gap: '0.25rem' }}>
+                {[1, 2, 3, 4, 5].map(level => (
+                  <div
+                    key={level}
+                    style={{
+                      width: '16px',
+                      height: '16px',
+                      borderRadius: '50%',
+                      backgroundColor: level <= (question.meta?.difficulty || 1)
+                        ? theme.accent
+                        : theme.text + '22',
+                      border: `1px solid ${theme.text}33`,
+                    }}
+                    title={`Difficulty ${level}`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
