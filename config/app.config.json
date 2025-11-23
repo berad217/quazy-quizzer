@@ -44,5 +44,12 @@
     "adjustmentSpeed": 0.5,
     "minQuestionsForAdaptation": 5,
     "categoryDetection": "auto"
+  },
+  "authoring": {
+    "enabled": true,
+    "requireAuth": false,
+    "autoSaveDrafts": true,
+    "keepBackups": true,
+    "maxBackupsPerQuiz": 5
   }
 }

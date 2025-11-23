@@ -47,6 +47,17 @@ export interface AdaptiveConfig {
 }
 
 /**
+ * Quiz authoring configuration
+ */
+export interface AuthoringConfig {
+  enabled: boolean;                    // default: true
+  requireAuth: boolean;                // default: false
+  autoSaveDrafts: boolean;             // default: true
+  keepBackups: boolean;                // default: true
+  maxBackupsPerQuiz: number;           // default: 5
+}
+
+/**
  * Main application configuration
  */
 export interface AppConfig {
@@ -60,4 +71,5 @@ export interface AppConfig {
   features: FeatureFlags;
   grading: GradingConfig;
   adaptive: AdaptiveConfig;
+  authoring: AuthoringConfig;
 }
