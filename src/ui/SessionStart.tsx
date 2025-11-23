@@ -13,9 +13,10 @@ interface SessionStartProps {
   onSessionStart: (sessionId: string, userId: string) => void;
   onUserChange: (userId: string) => void;
   currentUserId: string | null;
+  onEnterAuthoring?: () => void;
 }
 
-export function SessionStart({ onSessionStart, onUserChange, currentUserId }: SessionStartProps) {
+export function SessionStart({ onSessionStart, onUserChange, currentUserId, onEnterAuthoring }: SessionStartProps) {
   const { theme, themeName, setThemeName, config } = useTheme();
   const [quizzes, setQuizzes] = useState<QuizSet[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -169,7 +170,25 @@ export function SessionStart({ onSessionStart, onUserChange, currentUserId }: Se
         color: theme.text,
       }}
     >
-      <h1 style={{ color: theme.accent }}>Start a Quiz</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1 style={{ color: theme.accent }}>Start a Quiz</h1>
+        {onEnterAuthoring && (
+          <button
+            onClick={onEnterAuthoring}
+            style={{
+              padding: '0.75rem 1.5rem',
+              backgroundColor: theme.accent,
+              color: '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            Quiz Authoring
+          </button>
+        )}
+      </div>
 
       {error && (
         <div

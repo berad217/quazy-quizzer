@@ -52,4 +52,11 @@ export const DEFAULT_CONFIG: AppConfig = {
     minQuestionsForAdaptation: 5,
     categoryDetection: 'auto',
   },
+  authoring: {
+    enabled: true,
+    requireAuth: false,
+    autoSaveDrafts: true,
+    keepBackups: true,
+    maxBackupsPerQuiz: 5,
+  },
 };

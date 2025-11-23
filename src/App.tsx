@@ -4,8 +4,9 @@ import { UserProfile } from './storage/userProfile';
 import { SessionStart } from './ui/SessionStart';
 import { QuizSession } from './ui/QuizSession';
 import { ThemeProvider, useTheme } from './ui/ThemeContext';
+import { QuizAuthoringApp } from './ui/authoring/QuizAuthoringApp';
 
-type AppView = 'start' | 'session';
+type AppView = 'start' | 'session' | 'authoring';
 
 function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
@@ -48,6 +49,14 @@ function App() {
 
   const handleUserChange = (userId: string) => {
     setCurrentUserId(userId);
+  };
+
+  const handleEnterAuthoring = () => {
+    setCurrentView('authoring');
+  };
+
+  const handleExitAuthoring = () => {
+    setCurrentView('start');
   };
 
   const handleThemeChange = async (themeName: string) => {
@@ -108,6 +117,8 @@ function App() {
         onSessionStart={handleSessionStart}
         onExitSession={handleExitSession}
         onUserChange={handleUserChange}
+        onEnterAuthoring={handleEnterAuthoring}
+        onExitAuthoring={handleExitAuthoring}
       />
     </ThemeProvider>
   );
@@ -121,6 +132,8 @@ function AppContent({
   onSessionStart,
   onExitSession,
   onUserChange,
+  onEnterAuthoring,
+  onExitAuthoring,
 }: {
   currentView: AppView;
   currentSessionId: string | null;
@@ -128,6 +141,8 @@ function AppContent({
   onSessionStart: (sessionId: string, userId: string) => void;
   onExitSession: () => void;
   onUserChange: (userId: string) => void;
+  onEnterAuthoring: () => void;
+  onExitAuthoring: () => void;
 }) {
   const { theme } = useTheme();
 
@@ -145,6 +160,7 @@ function AppContent({
           onSessionStart={onSessionStart}
           onUserChange={onUserChange}
           currentUserId={currentUserId}
+          onEnterAuthoring={onEnterAuthoring}
         />
       )}
 
@@ -153,6 +169,10 @@ function AppContent({
           sessionId={currentSessionId}
           onExit={onExitSession}
         />
+      )}
+
+      {currentView === 'authoring' && (
+        <QuizAuthoringApp onExit={onExitAuthoring} />
       )}
     </div>
   );

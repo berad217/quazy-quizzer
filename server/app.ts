@@ -4,6 +4,7 @@ import type { AppConfig } from '../src/config/types.js';
 import type { QuizRegistry } from '../src/quiz-engine/schema.js';
 import { sessionStore } from './sessionService.js';
 import * as userService from './userService.js';
+import * as authoringService from './authoringService.js';
 
 /**
  * Creates and configures the Express application
@@ -352,6 +353,236 @@ export function createApp(config: AppConfig, quizRegistry: QuizRegistry) {
       });
       const user = await userService.getUser(req.params.id);
       res.json(user);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes('not found')
+      ) {
+        return res.status(404).json({ error: error.message });
+      }
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // ========== Quiz Authoring API ==========
+
+  /**
+   * GET /api/author/quizzes
+   * Lists all quizzes (published and drafts)
+   */
+  app.get('/api/author/quizzes', async (req, res) => {
+    try {
+      const includeDrafts = req.query.includeDrafts !== 'false';
+      const quizzes = await authoringService.listQuizzes(includeDrafts);
+      res.json(quizzes);
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * GET /api/author/quizzes/:id
+   * Gets a quiz by ID for editing
+   */
+  app.get('/api/author/quizzes/:id', async (req, res) => {
+    try {
+      const quiz = await authoringService.getQuizForEditing(req.params.id);
+      if (!quiz) {
+        return res.status(404).json({ error: 'Quiz not found' });
+      }
+      res.json(quiz);
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * POST /api/author/quizzes
+   * Creates a new quiz
+   * Body: { quiz: RawQuizData, saveAsDraft?: boolean }
+   */
+  app.post('/api/author/quizzes', async (req, res) => {
+    try {
+      const { quiz, saveAsDraft = true } = req.body;
+
+      if (!quiz || !quiz.id) {
+        return res.status(400).json({
+          error: 'Quiz data with ID is required',
+        });
+      }
+
+      await authoringService.createQuiz(quiz, saveAsDraft);
+      res.status(201).json({ success: true, id: quiz.id });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes('already exists')
+      ) {
+        return res.status(409).json({ error: error.message });
+      }
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * PUT /api/author/quizzes/:id
+   * Updates an existing quiz
+   * Body: { quiz: RawQuizData, saveAsDraft?: boolean, createBackup?: boolean }
+   */
+  app.put('/api/author/quizzes/:id', async (req, res) => {
+    try {
+      const { quiz, saveAsDraft = true, createBackup = true } = req.body;
+
+      if (!quiz) {
+        return res.status(400).json({
+          error: 'Quiz data is required',
+        });
+      }
+
+      await authoringService.updateQuiz(req.params.id, quiz, saveAsDraft, createBackup);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * POST /api/author/quizzes/:id/publish
+   * Publishes a draft quiz
+   */
+  app.post('/api/author/quizzes/:id/publish', async (req, res) => {
+    try {
+      await authoringService.publishQuiz(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes('validation errors')
+      ) {
+        return res.status(400).json({ error: error.message });
+      }
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * DELETE /api/author/quizzes/:id
+   * Deletes a quiz
+   */
+  app.delete('/api/author/quizzes/:id', async (req, res) => {
+    try {
+      const deleteDraft = req.query.deleteDraft !== 'false';
+      await authoringService.deleteQuiz(req.params.id, deleteDraft);
+      res.json({ success: true });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes('not found')
+      ) {
+        return res.status(404).json({ error: error.message });
+      }
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * POST /api/author/quizzes/:id/validate
+   * Validates a quiz and returns errors/warnings
+   */
+  app.post('/api/author/quizzes/:id/validate', async (req, res) => {
+    try {
+      const { quiz } = req.body;
+
+      if (!quiz) {
+        return res.status(400).json({
+          error: 'Quiz data is required',
+        });
+      }
+
+      const validation = await authoringService.validateQuizData(quiz);
+      res.json(validation);
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * POST /api/author/quizzes/:id/duplicate
+   * Duplicates a quiz with a new ID
+   * Body: { newQuizId: string }
+   */
+  app.post('/api/author/quizzes/:id/duplicate', async (req, res) => {
+    try {
+      const { newQuizId } = req.body;
+
+      if (!newQuizId) {
+        return res.status(400).json({
+          error: 'newQuizId is required',
+        });
+      }
+
+      await authoringService.duplicateQuiz(req.params.id, newQuizId);
+      res.json({ success: true, newQuizId });
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * POST /api/author/import
+   * Imports a quiz from JSON
+   * Body: { jsonString: string, saveAsDraft?: boolean }
+   */
+  app.post('/api/author/import', async (req, res) => {
+    try {
+      const { jsonString, saveAsDraft = true } = req.body;
+
+      if (!jsonString) {
+        return res.status(400).json({
+          error: 'jsonString is required',
+        });
+      }
+
+      const quizId = await authoringService.importQuiz(jsonString, saveAsDraft);
+      res.json({ success: true, quizId });
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        return res.status(400).json({ error: 'Invalid JSON format' });
+      }
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * GET /api/author/quizzes/:id/export
+   * Exports a quiz as JSON
+   */
+  app.get('/api/author/quizzes/:id/export', async (req, res) => {
+    try {
+      const jsonString = await authoringService.exportQuiz(req.params.id);
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="${req.params.id}.json"`);
+      res.send(jsonString);
     } catch (error) {
       if (
         error instanceof Error &&
