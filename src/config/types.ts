@@ -36,6 +36,17 @@ export interface GradingConfig {
 }
 
 /**
+ * Adaptive difficulty configuration
+ */
+export interface AdaptiveConfig {
+  enabled: boolean;                    // default: true
+  defaultTargetAccuracy: number;       // 0-1, default: 0.7 (70%)
+  adjustmentSpeed: number;             // 0-1, default: 0.5 (K factor of 32)
+  minQuestionsForAdaptation: number;   // default: 5
+  categoryDetection: 'auto' | 'manual'; // default: 'auto'
+}
+
+/**
  * Main application configuration
  */
 export interface AppConfig {
@@ -48,4 +59,5 @@ export interface AppConfig {
   userDataFile: string;
   features: FeatureFlags;
   grading: GradingConfig;
+  adaptive: AdaptiveConfig;
 }

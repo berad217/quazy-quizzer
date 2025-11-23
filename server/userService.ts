@@ -6,7 +6,9 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { UserProfile, UserData, QuizCompletionStats, QuestionPerformance } from '../src/storage/userProfile.js';
+import { UserProfile, UserData, QuizCompletionStats, QuestionPerformance, SkillLevel } from '../src/storage/userProfile.js';
+import { createSkillLevel, updateSkill } from '../src/adaptive/eloRating.js';
+import { Question } from '../src/quiz-engine/schema.js';
 
 const USERS_FILE = path.join(process.cwd(), 'users', 'users.json');
 
@@ -209,4 +211,52 @@ export async function deleteUser(userId: string): Promise<boolean> {
   users.splice(index, 1);
   await saveUsers(users);
   return true;
+}
+
+/**
+ * Updates user skill levels based on question performance (Sprint 8)
+ */
+export async function updateUserSkills(
+  userId: string,
+  questionResults: {
+    [compositeKey: string]: {
+      question: Question;
+      score: number; // 0-1
+    };
+  },
+  adjustmentSpeed: number = 32
+): Promise<void> {
+  const users = await loadUsers();
+  const user = users.find((u) => u.id === userId);
+
+  if (!user) {
+    throw new Error(`User not found: ${userId}`);
+  }
+
+  // Initialize skill levels if not present
+  if (!user.skillLevels) {
+    user.skillLevels = {};
+  }
+
+  // Update skill for each question
+  for (const [compositeKey, result] of Object.entries(questionResults)) {
+    const { question, score } = result;
+    const category = question.meta?.category || 'general';
+    const difficulty = question.meta?.difficulty || 3;
+
+    // Get or create skill level for this category
+    if (!user.skillLevels[category]) {
+      user.skillLevels[category] = createSkillLevel(category);
+    }
+
+    // Update skill level using Elo
+    updateSkill(
+      user.skillLevels[category],
+      difficulty,
+      score,
+      adjustmentSpeed
+    );
+  }
+
+  await saveUsers(users);
 }

@@ -25,6 +25,8 @@ export function SessionStart({ onSessionStart, onUserChange, currentUserId }: Se
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [randomize, setRandomize] = useState(config.features.randomizeOrderByDefault);
   const [limit, setLimit] = useState<number | undefined>(undefined);
+  const [adaptiveMode, setAdaptiveMode] = useState(config.adaptive?.enabled || false);
+  const [targetAccuracy, setTargetAccuracy] = useState(config.adaptive?.defaultTargetAccuracy || 0.7);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -124,6 +126,8 @@ export function SessionStart({ onSessionStart, onUserChange, currentUserId }: Se
           selectedQuizIds,
           randomize,
           limit: limit && limit > 0 ? limit : undefined,
+          adaptive: adaptiveMode,
+          targetAccuracy,
         }),
       });
 
@@ -423,7 +427,7 @@ export function SessionStart({ onSessionStart, onUserChange, currentUserId }: Se
           </label>
         </div>
 
-        <div>
+        <div style={{ marginBottom: '1rem' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem' }}>
             Limit questions (optional):
           </label>
@@ -446,6 +450,81 @@ export function SessionStart({ onSessionStart, onUserChange, currentUserId }: Se
             }}
           />
         </div>
+
+        {/* Adaptive Difficulty (Sprint 8) */}
+        {config.adaptive?.enabled && (
+          <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: `1px solid ${theme.text}22` }}>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={adaptiveMode}
+                  onChange={(e) => setAdaptiveMode(e.target.checked)}
+                  style={{ marginRight: '0.5rem' }}
+                />
+                <strong>Adaptive Difficulty</strong>
+                <span style={{ marginLeft: '0.5rem', fontSize: '0.9rem', opacity: 0.7 }}>
+                  (adjusts to your skill level)
+                </span>
+              </label>
+            </div>
+
+            {adaptiveMode && selectedUser && (
+              <div
+                style={{
+                  marginLeft: '1.5rem',
+                  padding: '1rem',
+                  backgroundColor: theme.background,
+                  borderRadius: '4px',
+                  fontSize: '0.9rem',
+                }}
+              >
+                {selectedUser.skillLevels && Object.keys(selectedUser.skillLevels).length > 0 ? (
+                  <>
+                    <div style={{ marginBottom: '0.75rem', opacity: 0.8 }}>
+                      Your skill levels:
+                    </div>
+                    {Object.entries(selectedUser.skillLevels).map(([category, skill]: [string, any]) => (
+                      <div key={category} style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>{category}:</span>
+                        <span style={{ fontWeight: 'bold' }}>
+                          {skill.estimatedLevel.toFixed(1)} / 5.0
+                          <span style={{ marginLeft: '0.5rem', opacity: 0.6 }}>
+                            ({Math.round(skill.confidence * 100)}% confidence)
+                          </span>
+                        </span>
+                      </div>
+                    ))}
+                    <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: `1px solid ${theme.text}22` }}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', opacity: 0.8 }}>
+                        Target accuracy: {Math.round(targetAccuracy * 100)}%
+                      </label>
+                      <input
+                        type="range"
+                        min="0.5"
+                        max="0.9"
+                        step="0.05"
+                        value={targetAccuracy}
+                        onChange={(e) => setTargetAccuracy(parseFloat(e.target.value))}
+                        style={{
+                          width: '100%',
+                          accentColor: theme.accent,
+                        }}
+                      />
+                      <div style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: '0.25rem' }}>
+                        Higher = easier questions, Lower = more challenging
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ opacity: 0.7 }}>
+                    Complete a few quizzes to build your skill profile for adaptive mode.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <button
